@@ -386,6 +386,8 @@ function howToPlay() {
 
 // Camera QR scanner (falls back to typing the 4-digit code)
 function openScanner(title, mode = null) {
+  // the QR reader library is big, so it only downloads the first time someone scans
+  if (!window.jsQR && !document.getElementById('jsqr')) { const s = document.createElement('script'); s.id = 'jsqr'; s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'; document.head.appendChild(s); }
   const body = openOverlay('scanner', `${icon('crosshair')} ${title}`, { closeLabel: 'Close' });
   body.innerHTML = `<div class="cam scan"><video playsinline muted autoplay></video><div class="scanframe"><i></i><b></b></div></div>
     <p class="hint center scan-msg">Point your camera at their QR code</p>
@@ -1138,11 +1140,11 @@ for (let i = 0; i < 18; i++) {
 }
 
 // ---------- start up (also resumes after a page reload) ----------
-const bootStart = Date.now();
 function hideBoot() {
   const b = $('#boot');
   if (!b) return;
-  const wait = Math.max(0, 2200 - (Date.now() - bootStart));
+  // counted from when the page started opening, so a slow download doesn't add extra waiting
+  const wait = Math.max(0, 1400 - performance.now());
   setTimeout(() => { b.classList.add('gone'); setTimeout(() => b.remove(), 700); }, wait);
 }
 
