@@ -1,0 +1,9 @@
+{
+  "name": "Hacker Party Game",
+  "short_name": "Hacker",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#05080a",
+  "theme_color": "#05080a",
+  "orientation": "portrait"
+}

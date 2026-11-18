@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#06070d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Hacker">
+  <link rel="manifest" href="manifest.json">
+  <title>HACKER — the party game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=9">
+</head>
+<body>
+  <!-- Loading screen: shows instantly while fonts, code and the network load -->
+  <div id="boot">
+    <div class="boot-logo"><span class="glitch" data-t="HACKER">HACKER</span><small>THE PARTY GAME</small></div>
+    <div class="boot-term">
+      <p style="--d:.1s">&gt; booting hacker_os v0.6…</p>
+      <p style="--d:.5s">&gt; loading firewalls…… <b>OK</b></p>
+      <p style="--d:.9s">&gt; injecting chaos into network… <b>OK</b></p>
+      <p style="--d:1.3s">&gt; hiding the hackers among you… <b>OK</b></p>
+      <p style="--d:1.7s">&gt; trust nobody. <span class="caret">█</span></p>
+    </div>
+    <div class="boot-bar"><div></div></div>
+  </div>
+  <div class="bg-grid"></div>
+  <div id="app"></div>
+  <div id="overlay"></div>
+  <div id="modal"></div>
+  <div id="splash"></div>
+  <div id="toasts"></div>
+  <!-- QR code maker + QR code reader (open-source libraries) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script type="module" src="main.js?v=9"></script>
+</body>
+</html>

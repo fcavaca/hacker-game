@@ -1,0 +1,112 @@
+# HACKER — the party game · prototype v0.6 (18 Nov 2026)
+
+**New in v0.6**
+- **Music and sound:** a menu track, a lobby track and a tense in-game track, plus sound effects (pop-ups, games, duels, win/lose). Turn music, sound effects or vibration off in *My sound settings*.
+- **Characters:** the headset matches the hoodie colour, no two players share a colour, and the earbuds now have wires.
+- **Renamed roles:** Catfish (was Honeypot), Respawner (Healer), Pro Player (Captain), Trojan (was Insider), Malware (old Trojan), Spidey Sense (Scout), Rage Baiter (Bounty Hunter).
+- **Host:** settings are remembered (also on Play again), *Reset to default* (20% each role, IT Guy 100%), and when the host opens Roles it opens for everyone (read-only).
+- **Role reveal:** shutters close, HACKER glitches in, then they open on your role.
+- **Lobby:** votes and "ready to vote" can't be undone; results are revealed bar by bar with a drum roll. If the vote ends the game, the reveal plays first.
+- **Games:** 4 at the start, +2 every 2 wins. The Terminal game is one command in 30 s (only letters and numbers count). Quiet Zone is 40 s.
+- **Hide & Seek:** 20 s to hide, then 40 s of hunting with the badge locked on screen. Found = −1 and a 1-min ban; survive = +2; a Hacker who finds you gets a remote hack.
+- **Courier:** 60 s, and the name is revealed in the last 15 s.
+- **Hackers (and the Trojan)** can play any game at any time. Close hacks add up across attempts.
+- **Kicked players** get a Players tab with everyone's role, status, hack danger and stats.
+
+**New in v0.5**
+- **Account:** saved on the phone. Earn XP each game, level up (12 levels), and unlock customisations (🔒 items show their level). Stats are on the Account screen.
+- **Headsets:** every character wears a gamer headset. There are 8 styles (gaming, neon, cat ears, retro, pro RGB, earbuds, bunny ears, devil horns) plus a headset colour.
+- **Role chooser:** one button opens all roles, each with a 0–100% chance (steps of 10).
+- **Places change the look:** House = warm orange, Dorm = neon purple, Uni = blue, Outside = green with stars. There's also a place banner.
+- **Clearer texts:** the events setting explains Rare (~7–10 min) / Often (~4–6 min), and role texts no longer mention cooldown times (the cooldown shows after you use a power).
+- **Duels end early:** a time duel ends the moment one player finishes. A count duel (Memory Race, Higher or Lower) ends as soon as you beat a player who is already out.
+- **Vote reveal:** "THE VOTES ARE IN", animated vote bars per player, and a full-screen HACKER DOWN / VOTED OUT message.
+- **End screen:** awards (MVP, Duel King, Punching Bag, Virus Spreader, Life Saver, Bloodhound, Most Suspected, First Down, Unbreakable) and the XP earned.
+- **Fix:** the scanner (or any open screen) now closes when the game ends.
+- **Note:** accounts live on one phone for now. Logging in from several devices would need Firebase Authentication switched on.
+
+A real-life hidden-traitor party game played on phones. **Gamers** fill the network bar by playing games around the house. Secret **Hackers** hack people. **NPCs** play for themselves. When someone is found AFK, everyone meets in the **Lobby** to argue and **Vote Kick**.
+
+## What's in it
+**Setup**
+- Loading screen and home screen with **HOST / JOIN**.
+- **Character creator:** skin, hair, hair colour (eyebrows match), eyes, mouth, face (mustache, beard…), hoodie, extra (party hat, clown nose, propeller cap…).
+- **How to play** guide on the home screen, in the waiting room, and in the Me tab.
+
+**Host settings** (+/− buttons, switches, choices)
+- **Place:** House / Dorm / Uni / **Outside**.
+- Timer, number of games, **forced duel every 2–10 min**.
+- Hackers: count, hack time, whether they know each other, sabotages on/off.
+- **Role chips:** switch every special role on or off.
+- Number of NPCs, IT Guy scans, power cooldown.
+- Random events (Off / Rare / Normal) and modifiers on/off.
+- Lobby timings, and what is shown when someone is kicked.
+
+**Badges (QR codes)**
+- Every player has a QR badge, and the **SCAN** button reads it. If the camera doesn't work, you can type the 4-digit code instead.
+- Scanning is used for: starting duels (one scan is enough), reporting AFK players, Lobby check-in, IT Guy scans, Firewall shields, Healer revives, and the social games.
+
+**Games**
+- **20 solo games.** Each one first shows a "how to play" card and the place to play it.
+  - Password Crack, Decrypt, Glitch Memory, Packet Catcher, Bug Squash, Odd One Out, Binary Switch, Alien Cipher, Slider Puzzle, Terminal, File Sort, Captcha, Spam Filter
+  - Whack-a-Hacker, Password Picker, **Hack the Mainframe**, **Firewall Defender**
+  - **Quiet Zone** (microphone: walk away from everyone), Noise Blast (microphone), Colour Hunt (camera)
+- **4 social games:**
+  - **Dare:** a witness scans your badge.
+  - **Courier:** you get a **clue** about who to deliver to, and the name is revealed after 45 s.
+  - **Handshake:** scan 2 badges.
+  - **Hide & Seek:** everyone is told to hunt you for 60 s.
+- **7 duel games:** Quick Draw, Math Sprint, Tug of War, Memory Race, Code Race, **Higher or Lower**, **Virus · Firewall · Patch** (rock-paper-scissors).
+
+**Roles**
+- **Gamers:** IT Guy, Firewall, Honeypot (the Hacker's phone screams), Streamer, Healer, Tank, Scout, Debugger, Captain (double vote), Patcher, Clutch ("XXX just tried to hack you, noob").
+- **Hackers:** Hacker, Trojan, DDoS, Insider.
+- **NPCs:** Troll, Bounty Hunter, Bug (glitches into a new role halfway), Rage Quitter, Fanboy.
+
+**Modifiers:** VPN, No Internet, Low Battery, Noob.
+
+**Events:** ⚡ Power Surge, 🔓 Data Leak, 🔄 System Update (everyone frozen), 🎯 Bounty, 🔑 Key Exposed.
+
+**Hacker sabotage:** 🚨 Dual Breach (2 random players must fix it in 60 s or the network loses 20%; the Patcher can fix it alone), 🐌 Lag Spike, 🔑 Key Wipe.
+
+**Lobby**
+- ERROR 404 / Lobby Key, QR check-in (late = no vote), ready-to-vote skip, Vote Kick (the Captain counts double).
+- After a skip or tie, there's a chance of an indecision penalty hack.
+
+**End screen:** VICTORY (green) / DEFEAT (red), who was who, NPC trophies, and a timeline of everything that happened.
+
+## Tested (19 Nov, with 5 fake players in browser tabs, online through Firebase)
+- **Rooms and roles:** joining, role assignment, every role power.
+- **Hacks:** close hack, remote hack, Honeypot trap, Tank, Clutch, Trojan, DDoS freeze.
+- **Duels:** scan-started duels, rock-paper-scissors scoring.
+- **Social games:** Hide & Seek, Courier clue, Dare, Handshake.
+- **Sabotage and events:** Dual Breach (fixed, failed, Patcher), Lag Spike, Key Wipe, all 5 events.
+- **Lobby:** check-in, ready-to-vote, Troll and Bounty Hunter wins, end screen. All 31 games load without errors.
+
+## Not tested yet
+- **Real phones:** the camera QR scan, microphone/camera games, sounds and screen lock. Camera and microphone only work on `https://`, so test after the GitHub upload.
+- **Balance** (how many roles, timings) needs real test nights.
+
+## How to test on your computer
+1. In Claude, start the preview **hacker-game** (or run `python devserver.py` in the `5. Self-Defined` folder).
+2. Open http://localhost:8790 and **HOST** a room.
+3. Open 2–4 more tabs, **JOIN** with the code, and press Start.
+4. For quick tests, set the hack time to 10 s and the Lobby times to the minimum.
+
+## Files (all in this folder, so the GitHub web upload works)
+
+| File | What it does |
+|---|---|
+| `index.html` | The page and the loading screen |
+| `style.css` | The look |
+| `main.js` | The screens |
+| `engine.js` | All the rules (runs on the host's phone) |
+| `games.js` | Mini-games |
+| `config.js` | Roles, settings, texts |
+| `avatar.js` | Characters |
+| `icons.js` | Icons |
+| `net.js` | Online connection |
+| `firebase-config.js` | Your Firebase project |
+| `manifest.json` | "Add to Home Screen" |
+
+**Updating later:** after changing code, raise the `?v=4` number in the imports and in `index.html`, so phones load the new version instead of an old cached one.
