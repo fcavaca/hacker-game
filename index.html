@@ -9,18 +9,21 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Hacker">
   <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
   <title>HACKER — the party game</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=11">
 </head>
 <body>
   <!-- Loading screen: shows instantly while fonts, code and the network load -->
   <div id="boot">
     <div class="boot-logo"><span class="glitch" data-t="HACKER">HACKER</span><small>THE PARTY GAME</small></div>
     <div class="boot-term">
-      <p style="--d:.1s">&gt; booting hacker_os v0.6…</p>
+      <p style="--d:.1s">&gt; booting hacker_os v0.7…</p>
       <p style="--d:.5s">&gt; loading firewalls…… <b>OK</b></p>
       <p style="--d:.9s">&gt; injecting chaos into network… <b>OK</b></p>
       <p style="--d:1.3s">&gt; hiding the hackers among you… <b>OK</b></p>
@@ -34,13 +37,12 @@
   <div id="modal"></div>
   <div id="splash"></div>
   <div id="toasts"></div>
-  <!-- QR code maker + QR code reader (open-source libraries) -->
   <!-- QR code maker (the QR reader loads only when someone first scans) -->
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <!-- download every code file at the same time instead of one after another -->
-  <link rel="modulepreload" href="net.js?v=9"><link rel="modulepreload" href="engine.js?v=9"><link rel="modulepreload" href="games.js?v=9">
-  <link rel="modulepreload" href="config.js?v=9"><link rel="modulepreload" href="icons.js?v=9"><link rel="modulepreload" href="avatar.js?v=9">
-  <link rel="modulepreload" href="profile.js?v=9"><link rel="modulepreload" href="music.js?v=9"><link rel="modulepreload" href="firebase-config.js?v=9">
-  <script type="module" src="main.js?v=9"></script>
+  <link rel="modulepreload" href="net.js?v=11"><link rel="modulepreload" href="engine.js?v=11"><link rel="modulepreload" href="games.js?v=11">
+  <link rel="modulepreload" href="config.js?v=11"><link rel="modulepreload" href="icons.js?v=11"><link rel="modulepreload" href="avatar.js?v=11">
+  <link rel="modulepreload" href="profile.js?v=11"><link rel="modulepreload" href="music.js?v=11"><link rel="modulepreload" href="firebase-config.js?v=11">
+  <script type="module" src="main.js?v=11"></script>
 </body>
 </html>

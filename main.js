@@ -1,13 +1,13 @@
 // SCREENS — what each player sees. Every phone runs this file. The host's phone also runs the engine.
 
-import { connect, ONLINE } from './net.js?v=9';
-import { createEngine } from './engine.js?v=9';
-import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=9';
-import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=9';
-import { icon } from './icons.js?v=9';
-import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=9';
-import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=9';
-import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=9';
+import { connect, ONLINE } from './net.js?v=11';
+import { createEngine } from './engine.js?v=11';
+import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=11';
+import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=11';
+import { icon } from './icons.js?v=11';
+import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=11';
+import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=11';
+import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=11';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -19,14 +19,18 @@ const pickOne = (a) => a[Math.floor(Math.random() * a.length)];
 const shakeEl = (el) => { if (!el) return; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); };
 
 // ---------- who am I ----------
-const me = { id: sessionStorage.getItem('pid') || 'p' + Math.random().toString(36).slice(2, 10) };
-sessionStorage.setItem('pid', me.id);
+// one id per phone (kept after closing the browser), so re-opening the game never creates a second you
+const me = { id: sessionStorage.getItem('pid') || localStorage.getItem('pid') || 'p' + Math.random().toString(36).slice(2, 10) };
+sessionStorage.setItem('pid', me.id); localStorage.setItem('pid', me.id);
 me.name = sessionStorage.getItem('name') || localStorage.getItem('name') || '';
 const savedAv = sessionStorage.getItem('av') || localStorage.getItem('av');
 let profile = loadProfile();
 const myLevel = () => (profile ? levelOf(profile.xp) : 1);
 me.av = savedAv && JSON.parse(savedAv).hc !== undefined ? cleanAvatar(JSON.parse(savedAv)) : randomUnlocked(myLevel());
 if (profile && !me.name) me.name = profile.name;
+// the character is saved on the phone the moment you change it, so it stays the same game after game
+function storeAv() { for (const st of [localStorage, sessionStorage]) st.setItem('av', JSON.stringify(me.av)); }
+if (!savedAv) storeAv();
 const joinMsg = () => ({ type: 'join', name: me.name, av: me.av, lvl: myLevel() });
 
 let S = null, offset = 0, net = null, engine = null, isHost = false, room = null;
@@ -80,6 +84,8 @@ function receive(s) {
   if (isHost && S.phase === 'waiting') try { localStorage.setItem('hpg-last-settings', JSON.stringify(S.settings)); } catch { /* ignore */ }
   if (prevPhase !== S.phase) onPhaseChange(prevPhase);
   if (S.phase === 'lobby' && S.lobby?.stage === 'result' && prevStage === 'vote') onVoteResult();
+  // not in the room yet (game was running, or the first join got lost): keep asking to join while the room is open
+  if (!isHost && !ui.leaving && !mine() && S.phase === 'waiting' && Date.now() - (ui.lastJoin || 0) > 2500) { ui.lastJoin = Date.now(); act(joinMsg()); }
   handleNotes();
   syncOverlays();
   render();
@@ -96,14 +102,14 @@ function onPhaseChange(prev) {
     const p = mine();
     if (p?.team) {
       const won = S.result?.winner === (p.team === 'hacker' ? 'hackers' : 'gamers') || p.npcWon;
-      showSplash(S.result?.winner === 'none' ? { kind: 'info', title: 'GAME OVER', text: S.result.text }
-        : { kind: won ? 'win' : 'lose', title: won ? 'VICTORY' : 'DEFEAT', text: S.result.text });
+      showSplash(S.result?.winner === 'none' ? { kind: 'info', title: 'GAME OVER', text: S.result.text, tapOnly: true }
+        : { kind: won ? 'win' : 'lose', title: won ? 'VICTORY' : 'DEFEAT', text: S.result.text, tapOnly: true });
       const r = S.result?.winner !== 'none' ? recordGame(S, me.id) : null;
       if (r) {
         profile = loadProfile();
         ui.lastXp = r;
-        showSplash({ kind: 'good', title: `+${r.gained.total} XP`, text: r.gained.parts.map(([k, v]) => `${k} +${v}`).join(' · ') });
-        if (r.after > r.before) showSplash({ kind: 'win', title: `LEVEL ${r.after}!`, text: 'You leveled up — new customisations unlocked! Check your character.' });
+        showSplash({ kind: 'good', title: `+${r.gained.total} XP`, text: r.gained.parts.map(([k, v]) => `${k} +${v}`).join(' · '), tapOnly: true });
+        if (r.after > r.before) showSplash({ kind: 'win', title: `LEVEL ${r.after}!`, text: 'You leveled up — new customisations unlocked! Check your character.', tapOnly: true });
       }
     }
   }
@@ -170,8 +176,24 @@ async function joinRoom() {
   act(joinMsg());
 }
 
+// the host ended the room: send everyone back to the start screen
+function roomClosed() {
+  if (isHost) return;
+  sessionStorage.removeItem('room');
+  net?.close?.(); net = null;
+  ui.overlay = null; ov.className = ''; ov.innerHTML = '';
+  app.innerHTML = `<div class="screen center ${enterCls('closed')}"><h2>ROOM CLOSED</h2><p class="hint center">The host ended the room. See you next game!</p><button class="btn big hot" id="home">${icon('left')} Back to start</button></div>`;
+  $('#home').onclick = () => location.reload();
+}
+
+// tell the host "I'm still here" every 15 s (phones that close the game drop out of the waiting room)
+setInterval(() => { if (room && S && mine() && S.phase !== 'closed') act({ type: 'hb' }); }, 15000);
+
 async function leave() {
-  if (!(await ask(isHost ? 'End the room?' : 'Leave the room?', isHost ? 'You are the host — leaving ends the game for everyone.' : 'You can join again with the code.', 'Leave'))) return;
+  if (!(await ask(isHost ? 'End the room?' : 'Leave the room?', isHost ? 'You are the host — leaving ends the game for everyone.' : S?.phase === 'playing' || S?.phase === 'lobby' ? 'You will be out of this game.' : 'You can join again with the code.', 'Leave'))) return;
+  ui.leaving = true; // don't auto-rejoin while the goodbye message goes out
+  act({ type: isHost ? 'closeRoom' : 'leave' });
+  await new Promise((r) => setTimeout(r, 700)); // give the message time to reach everyone
   if (isHost) localStorage.removeItem('host-' + room);
   sessionStorage.removeItem('room'); sessionStorage.removeItem('hostOf');
   location.reload();
@@ -225,16 +247,31 @@ function nextSplash() {
   const n = ui.splashQ.shift();
   if (!n) { ui.splashOn = false; spl.className = ''; spl.innerHTML = ''; return; }
   ui.splashOn = true;
+  // role results (IT Guy scan, Debugger…) first play a "scanning" animation, then reveal the answer
+  if (n.reveal) {
+    spl.className = 'show scanning';
+    spl.onclick = null;
+    const who = n.who ? pl(n.who) : null;
+    spl.innerHTML = `<div class="sp-inner"><div class="scan-av">${who ? av(who, 120) : `<div class="sp-icon">${icon('crosshair')}</div>`}<i class="scan-beam"></i></div><div class="sp-title">${esc(n.scanText || 'SCANNING…')}</div><div class="scan-bar"><div></div></div><div class="sp-text mono">${who ? esc(who.name) : ''}</div></div>`;
+    sfx('tick'); setTimeout(() => sfx('tick'), 600); setTimeout(() => sfx('tick'), 1200);
+    setTimeout(() => drawSplash(n), 1900);
+    return;
+  }
+  drawSplash(n);
+}
+function drawSplash(n) {
   const ic = { win: 'trophy', lose: 'skull', alarm: 'alert', alert: 'swords', good: 'shield', info: 'zap', bad: 'x' }[n.kind] || 'zap';
-  spl.className = 'show ' + n.kind;
-  spl.innerHTML = `<div class="sp-rays"></div><div class="sp-inner"><div class="sp-icon">${icon(ic)}</div><div class="sp-title glitch" data-t="${esc(n.title)}">${esc(n.title)}</div><div class="sp-text">${esc(n.text)}</div><div class="sp-tap">tap to continue</div></div>`;
+  spl.className = 'show ' + n.kind + (n.reveal ? ' revealed' : '');
+  spl.innerHTML = `<div class="sp-rays"></div><div class="sp-inner">${n.who && pl(n.who) ? `<div class="sp-who">${av(pl(n.who), 90)}</div>` : `<div class="sp-icon">${icon(ic)}</div>`}<div class="sp-title glitch" data-t="${esc(n.title)}">${esc(n.title)}</div><div class="sp-text">${esc(n.text)}</div><div class="sp-tap">tap to continue</div></div>`;
   if (n.kind === 'win') confetti(spl);
   if (n.kind === 'alarm' || n.kind === 'lose') { document.body.classList.remove('quake'); void document.body.offsetWidth; document.body.classList.add('quake'); }
   beep(n.kind);
   if (prefs.vibrate && navigator.vibrate && navigator.userActivation?.hasBeenActive) try { navigator.vibrate(n.kind === 'alarm' ? [200, 80, 200, 80, 300] : [120]); } catch { /* ignore */ }
-  const t = setTimeout(close, n.kind === 'alarm' || n.kind === 'alert' ? 4500 : 3400);
+  // big end-of-game screens wait for a tap; everything else also closes on its own
+  const t = n.tapOnly ? null : setTimeout(close, n.kind === 'alarm' || n.kind === 'alert' || n.reveal ? 4500 : 3400);
   function close() { clearTimeout(t); spl.onclick = null; nextSplash(); }
-  spl.onclick = close;
+  spl.onclick = null;
+  setTimeout(() => { spl.onclick = close; }, n.tapOnly ? 900 : 300); // ignore an accidental tap right as it appears
 }
 
 // sound: the first tap anywhere unlocks audio (phones require that); taps on buttons make a soft click
@@ -288,13 +325,7 @@ function syncOverlays() {
   const t = hnow();
   // game over or back in the waiting room: close the scanner, games, everything (except the guide / account / settings)
   if ((S.phase === 'ended' || S.phase === 'waiting') && ui.overlay && !['how', 'profile', 'roles', 'prefs'].includes(ui.overlay)) closeOverlay();
-  // when the host opens the roles list, it opens for everyone (read-only) and updates live
-  if (S.phase === 'waiting' && me.id !== S.hostId) {
-    if (!S.rolesView) ui.rolesDismissed = false;
-    if (S.rolesView && ui.overlay !== 'roles' && !ui.rolesDismissed && !ui.overlay) openRoles();
-    else if (!S.rolesView && ui.overlay === 'roles') closeOverlay();
-    else if (ui.overlay === 'roles') ui.rolesDraw?.();
-  }
+  // the roles list updates live while the host edits it
   if (S.phase !== 'waiting' && ui.overlay === 'roles') closeOverlay();
   // frozen (DDoS or System Update) beats everything except duels in progress
   if (S.phase === 'playing' && p.alive && frozenUntil(p) > t) {
@@ -439,6 +470,8 @@ function openScanner(title, mode = null) {
 function playGame(i) {
   const p = mine(), g = p.games[i], G = SOLO[g?.t];
   if (!G) return;
+  // 2 solo games in a row, then you have to duel someone
+  if (!G.social && (p.soloStreak || 0) >= 2) return showSplash({ kind: 'alert', title: 'DUEL TIME', text: 'You played 2 games in a row. Duel someone before your next game — find a player and scan their badge!' });
   if (G.social) {
     if (p.task && p.task.i !== i) return toast('Finish (or give up) your other social game first.', 'bad');
     if (!p.task) { act({ type: 'taskOpen', i }); ui.socialPending = true; }
@@ -554,13 +587,17 @@ function startDuel(d) {
   ui.cleanup = () => { clearInterval(iv); clearInterval(watch); gameCleanup?.(); };
 }
 
-function pickPlayer(title, filter, cb) {
+function pickPlayer(title, filter, cb, extra = null) {
   const body = openOverlay('picker', title, { closeLabel: 'Cancel' });
   const list = Object.values(S.players).filter((p) => p.team && p.id !== me.id && !p.kicked && !(p.afk && p.found) && filter(p));
   if (!list.length) { body.innerHTML = '<p class="hint center">Nobody available.</p>'; return; }
-  body.innerHTML = `<div class="pgrid">${list.map((p) => `<button class="pcard" data-id="${p.id}">${av(p, 64)}<span>${esc(p.name)}</span></button>`).join('')}</div>`;
+  body.innerHTML = `<div class="pgrid">${list.map((p) => `<button class="pcard" data-id="${p.id}">${av(p, 64)}<span>${esc(p.name)}</span>${extra ? extra(p) : ''}</button>`).join('')}</div>`;
   $$('.pcard', body).forEach((b) => b.onclick = () => { closeOverlay(); cb(b.dataset.id); });
 }
+
+// how far this Hacker has hacked someone (0–100%), from the host's saved progress or this phone's memory
+const hackPct = (id) => Math.round(Math.min(1, Math.max(mine()?.prog?.[id] || 0, ui.hackProg?.[id] || 0) / S.settings.hackSec) * 100);
+const hackLocked = () => S.startedAt && S.totalMs - (S.timerEndsAt - hnow()) < 30000;
 
 function startHack(targetId) {
   const need = S.settings.hackSec;
@@ -578,7 +615,7 @@ function startHack(targetId) {
   fg.style.strokeDasharray = C;
   const draw = () => {
     fg.style.strokeDashoffset = C * (1 - Math.min(1, prog / need));
-    num.textContent = `${Math.min(prog, need)}s`;
+    num.textContent = `${Math.round(Math.min(prog, need) / need * 100)}%`;
     btn.textContent = on ? 'PAUSE HACKING' : 'START HACKING';
     btn.classList.toggle('danger', on); body.classList.toggle('hacking', on);
   };
@@ -600,9 +637,14 @@ function render() {
   setTrack(!room || !S || S.phase === 'waiting' || S.phase === 'ended' ? 'menu' : S.phase === 'lobby' ? 'lobby' : 'game');
   if (!room) return renderHome();
   if (!S) { app.innerHTML = '<div class="screen center loading">Connecting…</div>'; return; }
+  if (S.phase === 'closed') return roomClosed();
   const p = mine();
   if (!p) {
-    app.innerHTML = `<div class="screen center"><h2>${S.phase === 'waiting' ? 'Joining…' : 'Game in progress'}</h2><p class="hint">${S.phase === 'waiting' ? '' : 'Wait for the next round, then join again.'}</p><button class="btn ghost" id="leave">Leave</button></div>`;
+    // joining while a game runs: you can't play yet, but you can follow the live feed
+    app.innerHTML = S.phase === 'waiting'
+      ? '<div class="screen center"><h2>Joining…</h2><button class="btn ghost" id="leave">Leave</button></div>'
+      : `<div class="screen ${enterCls('spectate')}"><div class="card center"><h2>GAME IN PROGRESS</h2><p class="hint center">You'll join automatically in the next game. Meanwhile, watch the chaos:</p></div>
+        <h3>${icon('news')} Live feed</h3>${newsList((S.news || []).slice(-15).reverse())}<button class="btn ghost" id="leave">${icon('logout')} Leave</button></div>`;
     $('#leave').onclick = leave; return;
   }
   if (S.phase === 'waiting') return renderWaiting();
@@ -667,9 +709,9 @@ function renderHome() {
     e.stopPropagation(); keepName();
     const k = b.dataset.p, n = +b.dataset.n;
     me.av[k] = (me.av[k] + +b.dataset.d + n) % n;
-    renderHome();
+    storeAv(); renderHome();
   });
-  $('#avRand')?.addEventListener('click', () => { keepName(); me.av = randomUnlocked(myLevel()); renderHome(); });
+  $('#avRand')?.addEventListener('click', () => { keepName(); me.av = randomUnlocked(myLevel()); storeAv(); renderHome(); });
   $('#acctBtn').onclick = () => { keepName(); openProfile(); };
   $('#prefsBtn').onclick = openPrefs;
   $('#host').onclick = createRoom;
@@ -704,8 +746,7 @@ function settingControl(s, host) {
 // All roles with a 0–100% chance each (steps of 10). 0% = never, 100% = always (if there are enough players).
 function openRoles() {
   const host = me.id === S.hostId;
-  const body = openOverlay('roles', `${icon('users')} Roles${host ? '' : ' <small>· the host is choosing</small>'}`, { closeLabel: host ? 'Done' : 'Close', onClose: () => { if (host) act({ type: 'rolesView', open: false }); } });
-  if (!host) ui.rolesDismissed = false;
+  const body = openOverlay('roles', `${icon('users')} Roles${host ? '' : ' <small>· the host is choosing</small>'}`, { closeLabel: host ? 'Done' : 'Close' });
   const prevClose = $('.ov-x', ov);
   if (prevClose && !host) prevClose.onclick = () => { ui.rolesDismissed = true; closeOverlay(); };
   const draw = () => {
@@ -788,7 +829,7 @@ function renderWaiting() {
   });
   $$('[data-toggle]').forEach((b) => b.onclick = () => patch(b.dataset.toggle, !S.settings[b.dataset.toggle]));
   $$('[data-seg]').forEach((b) => b.onclick = () => patch(b.dataset.seg, b.dataset.v));
-  $('#rolesOpen')?.addEventListener('click', () => { if (host) act({ type: 'rolesView', open: true }); openRoles(); });
+  $('#rolesOpen')?.addEventListener('click', () => openRoles());
   $('#prefsBtn').onclick = openPrefs;
   $('#resetSet')?.addEventListener('click', async () => { if (await ask('Reset settings?', 'All settings and role chances go back to the defaults.', 'Reset')) act({ type: 'settingsReset' }); });
   $$('.rm').forEach((b) => b.onclick = () => act({ type: 'remove', id: b.dataset.id }));
@@ -817,8 +858,10 @@ function tabbar(tabs, cur) {
 }
 
 function newsList(items) {
-  return items.length ? `<ul class="feed">${items.map((n) => `<li><span class="ft">${new Date(n.t - offset).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>${esc(n.text)}</li>`).join('')}</ul>` : '<p class="hint">Nothing yet…</p>';
+  const safeImg = (s) => typeof s === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(s);
+  return items.length ? `<ul class="feed">${items.map((n) => `<li class="${n.img ? 'has-img' : ''}"><span class="ft">${new Date(n.t - offset).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>${esc(n.text)}${safeImg(n.img) ? `<img class="feed-img" src="${n.img}" alt="photo">` : ''}</li>`).join('')}</ul>` : '<p class="hint">Nothing yet…</p>';
 }
+window.addEventListener('hpg-photo', (e) => { if (room && mine()) act({ type: 'photo', img: e.detail.img, what: e.detail.what }); });
 
 function duelCard(d) {
   const iAmA = d.a === me.id, other = pl(iAmA ? d.b : d.a);
@@ -939,7 +982,10 @@ function renderPlaying() {
   $('#duelRefuse')?.addEventListener('click', async () => { if (await ask('Refuse the duel?', 'You get a 2-minute game ban.', 'Refuse')) act({ type: 'duelRefuse' }); });
   $('#duelCancel')?.addEventListener('click', () => act({ type: 'duelCancel' }));
   const notMate = (x) => x.team !== 'hacker' || !S.settings.hackersKnow;
-  $('#closeHack')?.addEventListener('click', () => pickPlayer(`${icon('skull')} Who are you close to?`, notMate, startHack));
+  $('#closeHack')?.addEventListener('click', () => {
+    if (hackLocked()) return toast('⏳ Hacking unlocks 30 seconds into the game.', 'bad');
+    pickPlayer(`${icon('skull')} Who are you close to?`, notMate, startHack, (x) => { const pct = hackPct(x.id); return `<div class="pick-hack"><div style="width:${pct}%"></div><small>${pct}%</small></div>`; });
+  });
   $('#remoteHack')?.addEventListener('click', () => pickPlayer(`${icon('radio')} Remote hack who?`, notMate, (id) => act({ type: 'remoteHack', target: id })));
   $('#ddosBtn')?.addEventListener('click', () => pickPlayer(`${icon('wifioff')} DDoS who?`, notMate, (id) => act({ type: 'ddos', target: id })));
   $$('[data-sab]').forEach((b) => b.onclick = async () => { if (await ask('Use sabotage?', b.textContent.trim(), 'DO IT')) act({ type: 'sabotage', kind: b.dataset.sab }); });

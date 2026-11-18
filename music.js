@@ -1,5 +1,5 @@
 // MUSIC + SOUND EFFECTS, all synthesised live with the Web Audio API (no audio files, no copyright).
-// Three loops: 'menu' (upbeat synthwave), 'game' (tense pulse), 'lobby' (suspense + heartbeat).
+// Three loops: 'menu' (chill, funny lo-fi), 'game' (tense pulse), 'lobby' (suspense + heartbeat).
 // Players can switch music / sound effects / vibration off in their personal settings.
 
 const KEY = 'hpg-audio';
@@ -55,21 +55,44 @@ function kick(bus, t, vol = 0.5) {
   o.connect(g); g.connect(bus); o.start(t); o.stop(t + 0.3);
 }
 const hz = (n) => 440 * Math.pow(2, (n - 69) / 12); // MIDI note -> frequency
+// a cartoon "bloop": a short note that slides up or down in pitch
+function slide(bus, f1, f2, t, d, vol = 0.06, type = 'sine') {
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f1, t); o.frequency.exponentialRampToValueAtTime(f2, t + d);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  o.connect(g); g.connect(bus); o.start(t); o.stop(t + d + 0.05);
+}
 
 // ---------- the three loops (16 steps per bar) ----------
 const TRACKS = {
+  // menu: chill, swingy lo-fi with soft jazzy chords, a bouncy bass and silly bubble "bloops"
   menu: {
-    bpm: 118,
+    bpm: 84,
     play(s, t, dur) {
       const bar = Math.floor(s / 16) % 4, i = s % 16;
-      const roots = [57, 53, 48, 55]; // A F C G
-      const r = roots[bar];
-      if (i % 4 === 0) kick(musicBus, t, 0.35);
-      if (i % 4 === 2) noise(musicBus, t, 0.05, 0.05);
-      if (i % 2 === 0) note(musicBus, hz(r - 24), t, dur * 1.8, { type: 'sawtooth', vol: 0.12, filter: 500 });
-      const arp = [0, 7, 12, 16, 12, 7, 3, 7];
-      note(musicBus, hz(r + arp[i % 8]), t, dur * 0.9, { type: 'square', vol: 0.035, filter: 2600 });
-      if (i === 0) note(musicBus, hz(r + 12), t, dur * 14, { type: 'triangle', vol: 0.05, attack: 0.3 });
+      if (i % 2 === 1) t += dur * 0.28; // swing: off-beats come a little late (lazy feel)
+      const chords = [[53, 57, 60, 64], [52, 55, 59, 62], [50, 53, 57, 60], [48, 52, 55, 59]]; // Fmaj7 Em7 Dm7 Cmaj7
+      const ch = chords[bar], root = ch[0] - 12;
+      // soft "electric piano" chord, played twice per bar
+      if (i === 0 || i === 7) ch.forEach((n, k) => note(musicBus, hz(n), t + k * 0.012, dur * 6, { type: 'triangle', vol: 0.032, attack: 0.02, filter: 1800 }));
+      // bouncy bass: boom … ba-boom
+      if (i === 0) note(musicBus, hz(root), t, dur * 2.5, { type: 'sine', vol: 0.2 });
+      if (i === 6) note(musicBus, hz(root + 7), t, dur * 1.2, { type: 'sine', vol: 0.14 });
+      if (i === 10) note(musicBus, hz(root + 12), t, dur * 1.2, { type: 'sine', vol: 0.12 });
+      // relaxed drums: soft kick, finger-snap, quiet shaker
+      if (i === 0 || i === 10) kick(musicBus, t, 0.22);
+      if (i === 4 || i === 12) noise(musicBus, t, 0.08, 0.05, 2500);
+      if (i % 2 === 0) noise(musicBus, t, 0.025, 0.015, 9000);
+      // lazy little melody (pentatonic, so it always sounds happy)
+      const mel = [[72, null, 69, null, 67, null, null, 69, 72, null, 74, null, null, 72, null, null],
+        [71, null, null, 67, null, 64, null, null, 67, null, 69, 71, null, null, null, null],
+        [69, null, 72, null, 74, null, 72, null, 69, null, null, 67, null, 65, null, null],
+        [67, null, null, null, 64, null, 67, null, 72, null, null, null, null, null, null, null]][bar];
+      if (mel[i]) note(musicBus, hz(mel[i]), t, dur * 1.6, { type: 'sine', vol: 0.05, attack: 0.01 });
+      // the funny part: bubble bloops and a "boing" at the end of the loop
+      if (i === 14 && bar % 2 === 0) slide(musicBus, hz(76), hz(88), t, 0.12, 0.05);
+      if (i === 15 && bar === 1) slide(musicBus, hz(84), hz(72), t, 0.18, 0.045, 'triangle');
+      if (i === 12 && bar === 3) { slide(musicBus, hz(48), hz(72), t, 0.25, 0.06, 'triangle'); slide(musicBus, hz(72), hz(60), t + 0.25, 0.2, 0.04, 'triangle'); }
     },
   },
   game: {

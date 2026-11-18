@@ -7,8 +7,8 @@
 // shields and Healer revives all work by scanning badges.
 
 import { SOLO_IDS, SENSOR_IDS, SOCIAL_IDS, EMERGENCY_IDS, DUEL_IDS, DUEL_BETTER, DEFAULT_SETTINGS, ZONES, DARES,
-  GAMER_ROLES, HACKER_ROLES, NPC_ROLES, MODIFIERS, ROLE_INFO } from './config.js?v=9';
-import { cleanAvatar, COLOR_NAMES, HAIR_COLOR_NAMES, partName } from './avatar.js?v=9';
+  GAMER_ROLES, HACKER_ROLES, NPC_ROLES, MODIFIERS, ROLE_INFO } from './config.js?v=11';
+import { cleanAvatar, COLOR_NAMES, HAIR_COLOR_NAMES, partName } from './avatar.js?v=11';
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -59,6 +59,19 @@ export function createEngine(code, hostId, publish, saved) {
   const inActiveDuel = (p) => duelOf(p)?.st === 'active';
   const canHack = (p) => p.team === 'hacker' && p.role !== 'insider';
   const freePlay = (p) => p.team === 'hacker'; // the whole Hacker team (Trojan too) plays fake games: no cooldowns, no bans
+  // nobody can hack in the first 30 seconds of a game
+  const hackLocked = () => S.phase === 'playing' && elapsed() < 30000;
+  // one more second of close-hack progress (from hacking, or from being in a duel together); 100% = hack planted
+  function addHackSecond(h, q) {
+    h.prog[q.id] = (h.prog[q.id] || 0) + 1;
+    if (h.prog[q.id] % 5 === 0) dirty = true; // share progress every 5 s so it is never lost
+    if (h.prog[q.id] >= set().hackSec) {
+      h.prog[q.id] = 0;
+      if (applyHack(q, h.id, 'close') !== 'trap') note(h.id, `${q.name} is infected. They drop in ${set().afkDelay} s. Act natural.`, 'win', '💀 HACK PLANTED');
+      return true;
+    }
+    return false;
+  }
   const frozen = (p) => now() < Math.max(p.frozenUntil || 0, S.freezeAllUntil || 0);
   const cdMs = (p) => set().powerCd * MIN * (p.mod === 'lowbattery' ? 2 : 1);
   // each special role has a chance (0–100%) to be in the game; rolled once per role at the start
@@ -74,7 +87,14 @@ export function createEngine(code, hostId, publish, saved) {
     dirty = true;
   }
   const noteAll = (text, kind, title, except = null) => { for (const x of inGame()) if (x.id !== except) note(x.id, text, kind, title); };
-  function news(text) { S.news.push({ t: now(), text }); if (S.news.length > 40) S.news.shift(); dirty = true; }
+  function news(text, extra) {
+    S.news.push({ t: now(), text, ...(extra || {}) });
+    if (S.news.length > 40) S.news.shift();
+    // only the 6 newest photos keep their picture, so the game data stays small
+    const withImg = S.news.filter((n) => n.img);
+    for (const n of withImg.slice(0, -6)) delete n.img;
+    dirty = true;
+  }
   function log(text, extra) { S.log.push({ t: now(), m: mins(), text, ...(extra || {}) }); if (S.log.length > 150) S.log.shift(); dirty = true; }
 
   function newBadges(players) {
@@ -248,7 +268,7 @@ export function createEngine(code, hostId, publish, saved) {
 
   // ---------- hacking ----------
   function scoutPing(victim) {
-    for (const x of alive()) if (x.role === 'scout' && x.id !== victim.id) note(x.id, 'A hack just happened somewhere. Who? Where? Find out.', 'alert', '📡 HACK DETECTED');
+    for (const x of alive()) if (x.role === 'scout' && x.id !== victim.id) note(x.id, 'A hack just happened somewhere. Who? Where? Find out.', 'alert', '🕷️ SPIDEY SENSE');
   }
 
   // returns true if the hack really worked
@@ -301,13 +321,16 @@ export function createEngine(code, hostId, publish, saved) {
     if (p.scans < 1) return note(p.id, '🛠️ No scans left.', 'bad');
     if (!q.alive) return note(p.id, `🛠️ ${q.name} is already out.`);
     p.scans--;
-    if (q.mod === 'vpn') return note(p.id, `🔒 Scan failed: VPN detected on ${q.name}'s phone.`, 'bad');
+    // the result is a full-screen reveal: "scanning…" first, then the answer
+    const scan = { reveal: true, who: q.id, scanText: 'SCANNING FOR VIRUSES…' };
+    const left = ` (${p.scans} scan${p.scans === 1 ? '' : 's'} left)`;
+    if (q.mod === 'vpn') return note(p.id, `${q.name}'s phone is hiding behind a VPN. No data.${left}`, 'bad', '🔒 VPN DETECTED', scan);
     if (q.pending || q.remote) {
       q.pending = null; q.remote = null; p.cures++;
-      note(p.id, `${q.name} WAS hacked — you wiped the virus!`, 'win', '🛠️ CURED');
+      note(p.id, `${q.name} WAS hacked — you wiped the virus!${left}`, 'win', '🦠 VIRUS FOUND', scan);
       note(q.id, 'The IT Guy found a virus on your phone and deleted it. You owe them one.', 'good', '🛠️ SAVED');
       log(`🛠️ IT Guy ${p.name} cured ${q.name}`);
-    } else note(p.id, `🛠️ ${q.name}'s phone is clean.`, 'good');
+    } else note(p.id, `No virus on ${q.name}'s phone.${left}`, 'good', '✅ ALL CLEAN', scan);
   }
 
   function powerReady(p) {
@@ -351,6 +374,7 @@ export function createEngine(code, hostId, publish, saved) {
     const better = DUEL_BETTER[d.g];
     const A = P(d.a), B = P(d.b), t = now();
     endDuel(d);
+    for (const x of [A, B]) if (x) x.soloStreak = 0; // a duel resets the 2-games-in-a-row limit
     if (A) A.readyAt = t + set().cooldownSec * 1000;
     if (B) B.readyAt = t + set().cooldownSec * 1000;
     if (!A || !B) return;
@@ -422,7 +446,7 @@ export function createEngine(code, hostId, publish, saved) {
       if (!powerReady(p)) return;
       p.powerAt = now() + cdMs(p);
       owner.shield = true;
-      note(p.id, `🧱 Shield placed on ${owner.name}.`, 'good');
+      note(p.id, `${owner.name} is protected. The next hack on them bounces off.`, 'good', '🧱 SHIELD UP', { reveal: true, who: owner.id, scanText: 'INSTALLING FIREWALL…' });
       note(owner.id, 'Someone put a Firewall shield on you. The next hack bounces off.', 'good', '🧱 SHIELDED');
       log(`🧱 Firewall ${p.name} shielded ${owner.name}`);
       return;
@@ -656,6 +680,8 @@ export function createEngine(code, hostId, publish, saved) {
         const g = p.games[a.i];
         // Hackers' games don't count, so they can play any game at any time (no cooldown, no ban)
         if (!g || g.done || SOCIAL_IDS.includes(g.t) || inActiveDuel(p) || (t < p.readyAt - 500 && !freePlay(p))) return true;
+        if ((p.soloStreak || 0) >= 2) { note(p.id, '⚔️ Duel someone first — max 2 games in a row.', 'bad'); return true; }
+        p.soloStreak = (p.soloStreak || 0) + 1;
         if (a.ok) gameWon(p, a.i);
         else {
           p.games[a.i] = { t: otherGame(g.t, p), z: zonePick(g.z), done: false };
@@ -711,26 +737,20 @@ export function createEngine(code, hostId, publish, saved) {
       }
       case 'hackTick': {
         const q = P(a.target);
-        if (!canHack(p) || frozen(p) || !q || !q.alive || q.team === 'hacker' || q.pending || q.remote) return false;
+        if (!canHack(p) || frozen(p) || hackLocked() || !q || !q.alive || q.team === 'hacker' || q.pending || q.remote) return false;
         if (t - (p.progT[q.id] || 0) < 800) return false;
         p.progT[q.id] = t;
-        p.prog[q.id] = (p.prog[q.id] || 0) + 1;
         p.hackTarget = q.id;
-        if (p.prog[q.id] % 5 === 0) dirty = true; // share progress every 5 s so it is never lost
-        if (p.prog[q.id] >= set().hackSec) {
-          p.prog[q.id] = 0;
-          if (applyHack(q, p.id, 'close') !== 'trap') note(p.id, `${q.name} is infected. They drop in ${set().afkDelay} s. Act natural.`, 'win', '💀 HACK PLANTED');
-          return true;
-        }
-        return false;
+        return addHackSecond(p, q);
       }
       case 'remoteHack': {
         const q = P(a.target);
         if (!canHack(p) || p.charges < 1) return true;
+        if (hackLocked()) { note(p.id, '⏳ Hacking unlocks 30 seconds into the game.'); return true; }
         if (!q || !q.alive || q.team === 'hacker' || q.pending || q.remote) { note(p.id, '📡 Can\'t reach them right now.'); return true; }
         p.charges--;
         const res = applyHack(q, p.id, 'remote');
-        if (res !== 'trap') note(p.id, `📡 Remote hack fired at ${q.name}.`, 'good');
+        if (res !== 'trap') note(p.id, `The virus is on its way to ${q.name}. Act natural.`, 'win', '📡 REMOTE HACK SENT', { reveal: true, who: q.id, scanText: 'UPLOADING VIRUS…' });
         if (res === true) { q.task = q.task?.kind === 'vanish' ? null : q.task; q.remote = { id: newId('r'), at: t + set().afkDelay * 1000, by: p.id, g: pick(EMERGENCY_IDS) }; }
         return true;
       }
@@ -759,8 +779,10 @@ export function createEngine(code, hostId, publish, saved) {
         const q = P(a.target);
         if (p.role !== 'debugger' || !q || !powerReady(p)) return true;
         p.powerAt = t + cdMs(p);
-        if (q.mod === 'vpn') note(p.id, `🔒 ${q.name}: VPN detected. No data.`, 'bad');
-        else note(p.id, `${q.name} ${t - (q.lastWinAt || 0) < 3 * MIN ? 'WON a duel in the last 3 minutes. 🤨' : 'has NOT won a duel in the last 3 minutes.'}`, 'info', '🐞 DEBUG RESULT');
+        const dbg = { reveal: true, who: q.id, scanText: 'DEBUGGING…' };
+        const won = t - (q.lastWinAt || 0) < 3 * MIN;
+        if (q.mod === 'vpn') note(p.id, `${q.name} is behind a VPN. No data.`, 'bad', '🔒 VPN DETECTED', dbg);
+        else note(p.id, `${q.name} ${won ? 'WON a duel in the last 3 minutes. 🤨' : 'has NOT won a duel in the last 3 minutes.'}`, won ? 'alert' : 'good', won ? '🐞 SUSPICIOUS' : '🐞 NOTHING FOUND', dbg);
         return true;
       }
       case 'ddos': {
@@ -768,7 +790,7 @@ export function createEngine(code, hostId, publish, saved) {
         if (p.role !== 'ddos' || !q || !q.alive || q.team === 'hacker' || !powerReady(p)) return true;
         p.powerAt = t + cdMs(p); q.frozenUntil = t + MIN;
         note(q.id, 'Your phone is frozen for 60 seconds. No games, duels or scans.', 'alarm', '🌊 DDoS ATTACK');
-        note(p.id, `🌊 ${q.name} is frozen for 60 s.`, 'good');
+        note(p.id, `${q.name}'s phone is frozen for 60 s. No games, duels or scans.`, 'win', '🌊 DDoS HIT', { reveal: true, who: q.id, scanText: 'FLOODING THEIR NETWORK…' });
         log(`🌊 ${p.name} DDoSed ${q.name}`);
         return true;
       }
@@ -817,6 +839,7 @@ export function createEngine(code, hostId, publish, saved) {
   // ---------- incoming actions ----------
   function handle(from, a) {
     try { if (_handle(from, a)) dirty = true; } catch (e) { console.error('engine error', e); }
+    const seenP = P(from); if (seenP) seenP.lastSeen = now(); // used to clear out phones that left the waiting room
   }
 
   function _handle(from, a) {
@@ -850,14 +873,42 @@ export function createEngine(code, hostId, publish, saved) {
       case 'settingsReset':
         if (host && S.phase === 'waiting') S.settings = { ...DEFAULT_SETTINGS };
         return true;
-      case 'rolesView': // the host opened/closed the roles list -> it opens/closes for everyone
-        if (host) S.rolesView = !!a.open;
+      case 'hb': return false; // 'still here' signal
+      case 'photo': { // a Colour Hunt snapshot for the live feed
+        const img = String(a.img || '');
+        if (S.phase !== 'playing' || !p.alive || img.length > 30000 || !/^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(img)) return false;
+        if (now() - (p.photoAt || 0) < 20000) return false; // max one photo every 20 s
+        p.photoAt = now();
+        const what = String(a.what || 'something').toLowerCase().slice(0, 20);
+        news(pick([
+          `📸 ${p.name} found something ${what}. Art critics are crying.`,
+          `📸 ${p.name} photographed ${what} like it owes them money.`,
+          `📸 Breaking: ${p.name} discovered the colour ${what}. Nobel prize incoming.`,
+          `📸 ${p.name} snapped this. Hackers, take notes on the location.`,
+          `📸 ${p.name}'s ${what} photo. National Geographic called — they said no.`,
+          `📸 Evidence #${S.news.length}: ${p.name} and something ${what}.`,
+        ]), { img });
+        return true;
+      }
+      case 'leave': // a player pressed Leave: gone from the waiting room, or out of the running game
+        if (host) return false;
+        if (S.phase === 'waiting' || S.phase === 'ended') { delete S.players[p.id]; S.order = S.order.filter((x) => x !== p.id); return true; }
+        if (p.alive) {
+          p.alive = false; p.left = true; p.pending = null; p.remote = null; p.task = null;
+          if (p.duel && S.duels[p.duel]) endDuel(S.duels[p.duel]);
+          if (S.keyHolder === p.id) S.keyHolder = null;
+          news(`🚪 ${p.name} left the game.`);
+          checkWin();
+        }
+        return true;
+      case 'closeRoom': // the host ended the room: everyone is sent back home
+        if (host) { S.phase = 'closed'; for (const d of Object.values(S.duels)) endDuel(d); }
         return true;
       case 'remove':
         if (host && S.phase === 'waiting' && a.id !== S.hostId) { delete S.players[a.id]; S.order = S.order.filter((x) => x !== a.id); }
         return true;
       case 'start':
-        if (host && S.phase === 'waiting' && S.order.length >= 3) { S.rolesView = false; startGame(); }
+        if (host && S.phase === 'waiting' && S.order.length >= 3) startGame();
         return true;
       case 'again':
         if (host && S.phase === 'ended') backToWaiting();
@@ -877,6 +928,12 @@ export function createEngine(code, hostId, publish, saved) {
   // ---------- clock ----------
   function tick() {
     const t = now();
+    if (S.phase === 'closed') return;
+    // waiting room: phones that closed the game without pressing Leave disappear after 45 s
+    if (S.phase === 'waiting') for (const id of [...S.order]) {
+      const x = P(id);
+      if (id !== S.hostId && x && t - (x.lastSeen || t) > 45000) { delete S.players[id]; S.order = S.order.filter((y) => y !== id); dirty = true; }
+    }
     if (S.phase === 'playing') {
       if (t >= S.timerEndsAt) return endGame('hackers', 'Time ran out — the Hackers win!');
       for (const p of alive()) {
@@ -904,6 +961,14 @@ export function createEngine(code, hostId, publish, saved) {
       if (S.nextEventAt && t >= S.nextEventAt) fireEvent();
       if (S.breach && t >= S.breach.until) breachDone(false);
       for (const d of Object.values(S.duels)) {
+        // a Hacker in a duel with someone is standing right next to them: every second counts toward the close hack
+        if (d.st === 'active' && t >= d.startAt && !hackLocked() && t - (d.hackT || 0) >= 1000) {
+          d.hackT = t;
+          const A = P(d.a), B = P(d.b);
+          for (const [h, q] of [[A, B], [B, A]]) {
+            if (h && q && canHack(h) && !frozen(h) && q.alive && q.team !== 'hacker' && !q.pending && !q.remote) addHackSecond(h, q);
+          }
+        }
         const limit = d.forced ? 90000 : set().duelTimeout * 1000;
         if (d.st === 'pending' && t - d.at > limit) {
           if (d.forced) {

@@ -4,7 +4,7 @@
 // Duel game: run(root, rand, done) -> cleanup. rand() is shared so both players get the SAME challenge.
 //            Call done(score).
 
-import { avatarSVG, randomAvatar } from './avatar.js?v=9';
+import { avatarSVG, randomAvatar } from './avatar.js?v=11';
 
 export function seeded(seed) {
   let a = seed >>> 0;
@@ -688,8 +688,8 @@ export const SOLO = {
             if (level > 0.5) held += t - last;
             last = t;
             lv.style.width = level * 100 + '%';
-            fl.textContent = Math.min(100, Math.round(held / 2500 * 100)) + '%';
-            if (held >= 2500) return done(true);
+            fl.textContent = Math.min(100, Math.round(held / 3750 * 100)) + '%';
+            if (held >= 3750) return done(true); // 50% longer than before
             raf = requestAnimationFrame(loop);
           };
           loop();
@@ -726,7 +726,16 @@ export const SOLO = {
         let hits = 0;
         for (let i = 0; i < d.length; i += 4) { const [h, s, v] = hsv(d[i], d[i + 1], d[i + 2]); if (col.test(h, s, v)) hits++; }
         const frac = hits / (w * w);
-        if (frac > 0.45) done(true);
+        if (frac > 0.45) {
+          // a small snapshot goes to the live feed (180 px, so it stays light for the network)
+          try {
+            const p = document.createElement('canvas'); p.width = 180; p.height = 180;
+            const big = Math.min(video.videoWidth, video.videoHeight) * 0.8;
+            p.getContext('2d').drawImage(video, (video.videoWidth - big) / 2, (video.videoHeight - big) / 2, big, big, 0, 0, 180, 180);
+            window.dispatchEvent(new CustomEvent('hpg-photo', { detail: { img: p.toDataURL('image/jpeg', 0.55), what: col.n } }));
+          } catch { /* no photo, no problem */ }
+          done(true);
+        }
         else msg.textContent = `Only ${Math.round(frac * 100)}% ${col.n.toLowerCase()}. Get closer!`;
       };
       const stop = timeBar(root, 75, () => done(false));

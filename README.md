@@ -1,5 +1,18 @@
 # HACKER — the party game · prototype v0.6 (18 Nov 2026)
 
+**New in v0.7 (after the first phone test)**
+- **Players:** one player ID per phone (no more double players), *Leave* really leaves (mid-game = out of the game), phones that close the game drop out of the waiting room after 45 s, and when the host ends the room everyone sees "ROOM CLOSED".
+- **Joining late:** you see the live feed and join automatically when the next game starts.
+- **Character:** saved the moment you change it.
+- **Hacking:** locked for the first 30 s; progress shown in % (also as bars on "Who are you close to?"); time in a duel with a Gamer counts toward the close hack.
+- **Rules:** max 2 solo games in a row, then you must duel. Noise Blast needs 50% more noise.
+- **Role results** (IT Guy, Debugger, Firewall, DDoS, remote hack) are full-screen reveals with a scanning animation.
+- **Live feed photos:** Colour Hunt snapshots appear in the feed with a funny caption (only the 6 newest keep their picture).
+- **Menu music** is a chill, swingy lo-fi loop. End-of-game screens only close when you tap.
+- The roles list no longer opens for everyone when the host opens it.
+- **Phone status bar:** the clock/wifi/battery no longer cover the top of the screen (safe-area padding).
+- **New app icon:** a neon hooded hacker with a gamer headset (`icon.svg`, `icon-180.png`, `icon-192.png`, `icon-512.png`). Imports are now `?v=11`.
+
 **New in v0.6**
 - **Music and sound:** a menu track, a lobby track and a tense in-game track, plus sound effects (pop-ups, games, duels, win/lose). Turn music, sound effects or vibration off in *My sound settings*.
 - **Characters:** the headset matches the hoodie colour, no two players share a colour, and the earbuds now have wires.
