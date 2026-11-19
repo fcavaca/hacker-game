@@ -3,7 +3,7 @@
 //  - Local test mode: browser tabs on one device talk through a BroadcastChannel.
 //  - Online mode (when firebase-config.js is filled in): phones talk through Firebase Realtime Database.
 
-import { firebaseConfig } from './firebase-config.js?v=17';
+import { firebaseConfig } from './firebase-config.js?v=18';
 
 export const ONLINE = !!(firebaseConfig && firebaseConfig.apiKey && firebaseConfig.databaseURL);
 
