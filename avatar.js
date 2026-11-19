@@ -86,8 +86,12 @@ export function avatarSVG(raw, size = 48, extra = '') {
   if (hairS === 'ponytail') s += `<ellipse cx="77" cy="50" rx="7" ry="15" fill="${hair}" transform="rotate(18 77 50)"/>`;
   if (hairS === 'afro') s += `<circle cx="50" cy="38" r="33" fill="${hair}"/>`;
   if (hairS === 'pigtails') s += `<circle cx="20" cy="44" r="9" fill="${hair}"/><circle cx="80" cy="44" r="9" fill="${hair}"/>`;
+  // the hood, lying down behind the neck (drawn first so the body and head sit on top of it)
+  s += `<path d="M21 88 Q16 57 50 54 Q84 57 79 88 Z" fill="${hood}"/><path d="M30 84 Q29 64 50 62 Q71 64 70 84 Z" fill="${hoodD}"/>`;
   // body: hoodie
   s += `<path d="M12 100 Q14 78 50 75 Q86 78 88 100 Z" fill="${hood}"/>`;
+  s += `<path d="M22 86 Q36 79 50 80 Q64 79 78 86" fill="none" stroke="${hoodD}" stroke-width="2.4" opacity=".7"/>`; // hood seam
+  s += `<path d="M36 92 H64 V100 H36 Z" fill="${hoodD}" opacity=".45"/>`; // front pocket
   s += `<path d="M33 77 Q50 94 67 77" fill="none" stroke="${hoodD}" stroke-width="3"/><path d="M44 84 V96 M56 84 V96" stroke="${hoodD}" stroke-width="2" stroke-linecap="round"/>`;
   // neck + ears + head (slightly bigger head = funnier)
   s += `<rect x="43" y="62" width="14" height="16" rx="5" fill="${skinD}"/>`;

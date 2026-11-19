@@ -1,13 +1,13 @@
 // SCREENS — what each player sees. Every phone runs this file. The host's phone also runs the engine.
 
-import { connect, ONLINE } from './net.js?v=11';
-import { createEngine } from './engine.js?v=11';
-import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=11';
-import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=11';
-import { icon } from './icons.js?v=11';
-import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=11';
-import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=11';
-import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=11';
+import { connect, ONLINE } from './net.js?v=13';
+import { createEngine } from './engine.js?v=13';
+import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=13';
+import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=13';
+import { icon } from './icons.js?v=13';
+import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=13';
+import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=13';
+import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=13';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -35,7 +35,7 @@ const joinMsg = () => ({ type: 'join', name: me.name, av: me.av, lvl: myLevel() 
 
 let S = null, offset = 0, net = null, engine = null, isHost = false, room = null;
 const ui = { overlay: null, cleanup: null, roleShownFor: sessionStorage.getItem('roleShown'), duelPlayed: null, emergencyFor: null,
-  tab: 'net', outTab: 'news', revealRole: false, error: '', home: 'main', editAv: false, splashQ: [], splashOn: false,
+  tab: 'net', outTab: 'news', revealRole: false, error: '', home: 'main', editAv: false, splashQ: [], splashOn: false, later: [],
   viewKey: '', socialPending: false, breachFor: null, frozenShown: false };
 const seen = new Set(JSON.parse(sessionStorage.getItem('seen') || '[]'));
 
@@ -115,6 +115,11 @@ function onPhaseChange(prev) {
   }
 }
 
+// voted out: the player gets up from their computer and walks away; the screen says DISCONNECTED
+function leaveScene(k) {
+  return `<div class="leave-scene"><div class="ls-person">${av(k, 92)}</div><div class="ls-chair"></div><div class="ls-desk"></div><div class="ls-monitor"><div class="ls-screen"><span class="on">ONLINE</span><span class="off">DISCONNECTED</span></div><i></i></div><div class="ls-bye">👋</div></div>`;
+}
+
 // drum roll + big reveal when the votes are counted
 function onVoteResult() {
   const o = S.lobby.outcome || {};
@@ -128,7 +133,7 @@ function onVoteResult() {
     const k = pl(o.kicked);
     if (!k) return showSplash({ kind: 'info', title: 'NO KICK', text: o.text });
     const good = o.team === 'hacker' ? (mine()?.team === 'hacker' ? 'lose' : 'win') : o.team ? 'lose' : 'alert';
-    showSplash({ kind: good, title: o.team === 'hacker' ? 'HACKER DOWN!' : 'VOTED OUT!', text: o.text });
+    showSplash({ kind: good, title: o.team === 'hacker' ? 'HACKER DOWN!' : 'VOTED OUT!', text: o.text, scene: k.id });
   }, revealAt + 400);
 }
 
@@ -186,6 +191,18 @@ function roomClosed() {
   $('#home').onclick = () => location.reload();
 }
 
+// keep the screen awake during a game. Most important on the HOST's phone: it runs the whole game,
+// and if it locks, nobody's games/duels get counted until it wakes up again.
+let wakeLock = null;
+async function keepAwake() {
+  const want = room && S && ['playing', 'lobby', 'waiting'].includes(S.phase);
+  if (!want || document.visibilityState !== 'visible' || wakeLock || !navigator.wakeLock) return;
+  try { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { wakeLock = null; }); } catch { /* not allowed right now */ }
+}
+document.addEventListener('visibilitychange', keepAwake);
+document.addEventListener('pointerdown', keepAwake, { passive: true });
+setInterval(keepAwake, 10000);
+
 // tell the host "I'm still here" every 15 s (phones that close the game drop out of the waiting room)
 setInterval(() => { if (room && S && mine() && S.phase !== 'closed') act({ type: 'hb' }); }, 15000);
 
@@ -205,10 +222,21 @@ function handleNotes() {
     if (seen.has(n.id)) continue;
     seen.add(n.id);
     if (n.siren) siren();
+    if (n.later && isBusy()) { ui.later.push(n); continue; } // no immediate effect: wait until the game/duel is over
     if (n.delay) { setTimeout(() => { if (n.title) showSplash(n); else toast(n.text, n.kind); }, n.delay); continue; }
     if (n.title) showSplash(n); else toast(n.text, n.kind);
   }
   sessionStorage.setItem('seen', JSON.stringify([...seen].slice(-300)));
+  flushLater();
+}
+// busy = playing a game, in a duel, reading your role… (messages with no immediate effect wait)
+function isBusy() {
+  if (S?.phase === 'playing' && mine()?.team && ui.roleShownFor !== S.gameId) return true;
+  return ['role', 'game', 'duel', 'intro', 'social', 'breach', 'emergency', 'hack', 'frozen'].includes(ui.overlay);
+}
+function flushLater() {
+  if (!ui.later.length || isBusy()) return;
+  for (const n of ui.later.splice(0)) { if (n.title) showSplash(n); else toast(n.text, n.kind); }
 }
 
 function toast(text, kind = 'info') {
@@ -262,7 +290,10 @@ function nextSplash() {
 function drawSplash(n) {
   const ic = { win: 'trophy', lose: 'skull', alarm: 'alert', alert: 'swords', good: 'shield', info: 'zap', bad: 'x' }[n.kind] || 'zap';
   spl.className = 'show ' + n.kind + (n.reveal ? ' revealed' : '');
-  spl.innerHTML = `<div class="sp-rays"></div><div class="sp-inner">${n.who && pl(n.who) ? `<div class="sp-who">${av(pl(n.who), 90)}</div>` : `<div class="sp-icon">${icon(ic)}</div>`}<div class="sp-title glitch" data-t="${esc(n.title)}">${esc(n.title)}</div><div class="sp-text">${esc(n.text)}</div><div class="sp-tap">tap to continue</div></div>`;
+  spl.innerHTML = `<div class="sp-rays"></div><div class="sp-inner">${n.scene && pl(n.scene) ? leaveScene(pl(n.scene)) : n.who && pl(n.who) ? `<div class="sp-who">${av(pl(n.who), 90)}</div>` : `<div class="sp-icon">${icon(ic)}</div>`}<div class="sp-title glitch" data-t="${esc(n.title)}">${esc(n.title)}</div><div class="sp-text">${esc(n.text)}</div>${n.btn ? `<button class="btn big hot sp-btn">${n.btn.label}</button>` : ''}<div class="sp-tap">tap to continue</div></div>`;
+  if (n.btn) $('.sp-btn', spl).onclick = (e) => { e.stopPropagation(); n.btn.fn(); close(); };
+  // wins and losses always wait for a tap
+  if (n.kind === 'win' || n.kind === 'lose') n.tapOnly = true;
   if (n.kind === 'win') confetti(spl);
   if (n.kind === 'alarm' || n.kind === 'lose') { document.body.classList.remove('quake'); void document.body.offsetWidth; document.body.classList.add('quake'); }
   beep(n.kind);
@@ -317,6 +348,7 @@ function closeOverlay() {
   const c = ui.cleanup; ui.cleanup = null;
   if (c) { try { c(); } catch (e) { console.error(e); } }
   ui.overlay = null; ov.className = ''; ov.innerHTML = '';
+  setTimeout(() => { if (S) flushLater(); }, 400); // held messages show once the game/duel screen is closed
 }
 
 function syncOverlays() {
@@ -471,16 +503,59 @@ function playGame(i) {
   const p = mine(), g = p.games[i], G = SOLO[g?.t];
   if (!G) return;
   // 2 solo games in a row, then you have to duel someone
-  if (!G.social && (p.soloStreak || 0) >= 2) return showSplash({ kind: 'alert', title: 'DUEL TIME', text: 'You played 2 games in a row. Duel someone before your next game — find a player and scan their badge!' });
+  if (!G.social && (p.soloStreak || 0) >= 2) return showSplash({ kind: 'alert', title: 'DUEL TIME', tapOnly: true,
+    text: p.duel ? 'You played 2 games in a row. You already have a duel waiting — find your opponent and scan their badge!' : 'You played 2 games in a row. Duel someone before your next game. Tap below and the game picks your opponent:',
+    btn: p.duel ? null : { label: `${icon('swords')} FIND SOMEONE NOW`, fn: () => act({ type: 'duelRandom' }) } });
   if (G.social) {
     if (p.task && p.task.i !== i) return toast('Finish (or give up) your other social game first.', 'bad');
     if (!p.task) { act({ type: 'taskOpen', i }); ui.socialPending = true; }
     openSocialTask(i);
     return;
   }
+  const need = Number(S.settings.walkSteps ?? 15);
+  const key = S.gameId + ':' + i + ':' + g.t;
+  ui.walked ||= {};
+  const [place, twist] = String(g.z || '').split(' · ');
   const body = openOverlay('intro', `${icon(G.ic)} ${G.name}`, { closeLabel: 'Not now' });
-  body.innerHTML = `<div class="intro"><div class="intro-ic">${icon(G.ic)}</div><h2>${G.name}</h2><p class="intro-zone">${icon('pin')} Play it at: <b>${esc(g.z)}</b></p><p class="intro-how">${HOW[g.t] || G.tag}</p><button class="btn big hot" id="goGame">${icon('play')} GO!</button><p class="hint center">Giving up or failing = 2-min game ban.</p></div>`;
+  body.innerHTML = `<div class="intro"><div class="intro-ic">${icon(G.ic)}</div><h2>${G.name}</h2>
+    <div class="intro-zone">${icon('pin')} Go to: <b>${esc(place)}</b>${twist ? `<span class="twist">and play it <b>${esc(twist)}</b></span>` : ''}</div>
+    ${need > 0 ? `<div class="walk"><div class="walk-top"><span>🚶 Walk there</span><b class="walk-n">0/${need} steps</b></div><div class="walk-bar"><div></div></div><small class="walk-msg">Start walking — your phone counts your steps.</small></div>` : ''}
+    <p class="intro-how">${HOW[g.t] || G.tag}</p><button class="btn big hot" id="goGame" ${need > 0 ? 'disabled' : ''}>${icon('play')} GO!</button><p class="hint center">Giving up or failing = 2-min game ban.</p></div>`;
   $('#goGame').onclick = () => runGame(i);
+  if (need > 0) ui.cleanup = countSteps(need, ui.walked[key] || 0, (n, fake) => {
+    ui.walked[key] = n;
+    const el = $('.walk-n', body); if (!el) return;
+    el.textContent = `${Math.min(n, need)}/${need} steps`;
+    $('.walk-bar div', body).style.width = Math.min(100, n / need * 100) + '%';
+    if (fake) $('.walk-msg', body).textContent = 'No step sensor on this device — walk there anyway, the bar fills by itself.';
+    if (n >= need) { $('#goGame', body).disabled = false; $('.walk-msg', body).textContent = '✅ You made it. Now follow the twist and play!'; $('.walk', body).classList.add('done'); sfx('good'); }
+  });
+}
+
+// Step counter from the motion sensor (a step = a bump in acceleration). No sensor → fills slowly on its own.
+function countSteps(need, start, onStep) {
+  let n = start, got = false, lastStep = 0, high = false, avg = 9.8, dead = false, fakeIv = null;
+  onStep(n);
+  if (n >= need) return () => {};
+  const onMotion = (e) => {
+    const a = e.accelerationIncludingGravity; if (!a || a.x == null) return;
+    got = true;
+    const m = Math.hypot(a.x, a.y, a.z);
+    avg = avg * 0.9 + m * 0.1;
+    const t = performance.now();
+    if (!high && m > avg + 1.6 && t - lastStep > 300) { high = true; lastStep = t; n++; onStep(n); if (n >= need) stop(); }
+    else if (high && m < avg + 0.4) high = false;
+  };
+  const begin = () => window.addEventListener('devicemotion', onMotion);
+  try {
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+      DeviceMotionEvent.requestPermission().then((r) => { if (r === 'granted' && !dead) begin(); }).catch(() => {});
+    } else begin();
+  } catch { /* no sensor */ }
+  // nothing from the sensor after 2.5 s (laptop, permission refused): count by itself, ~1.5 steps per second
+  const fb = setTimeout(() => { if (got || dead) return; fakeIv = setInterval(() => { n++; onStep(n, true); if (n >= need) stop(); }, 650); }, 2500);
+  function stop() { dead = true; window.removeEventListener('devicemotion', onMotion); clearTimeout(fb); clearInterval(fakeIv); }
+  return stop;
 }
 
 function runGame(i) {
@@ -574,7 +649,9 @@ function startDuel(d) {
       closeOverlay();
       toast('Score sent — waiting for your opponent…');
     });
-    gameCleanup = G.run($('.du-game', body), seeded(d.seed), finish);
+    // live duels (Hot Potato, Aura Duel) also get the duel state, a way to act, and the player's badge
+    const api = { me: me.id, otherName: pname(other), get: () => S.duels?.[d.id], act: (x) => act({ ...x, id: d.id }), now: hnow, badge: (size) => badgeBlock(mine(), size) };
+    gameCleanup = G.run($('.du-game', body), seeded(d.seed), finish, api);
     // count games: if the opponent is already out and you beat their score, you win right away
     if (gameCleanup?.level) {
       watch = setInterval(() => {
@@ -654,12 +731,12 @@ function render() {
   return p.alive ? renderPlaying() : renderOut();
 }
 
-function avatarEditor() {
+function avatarEditor(a = me.av) {
   const lvl = myLevel();
   return `<div class="av-editor">${Object.entries(AV_PARTS).map(([k, part]) => {
     const n = (part.list || part.colors).length;
-    const need = unlockLevel(k, me.av[k]);
-    const val = part.colors ? `<i class="swatch" style="background:${part.colors[me.av[k]]}"></i>` : `<small>${part.list[me.av[k]]}</small>`;
+    const need = unlockLevel(k, a[k]);
+    const val = part.colors ? `<i class="swatch" style="background:${part.colors[a[k]]}"></i>` : `<small>${part.list[a[k]]}</small>`;
     return `<div class="avrow ${need > lvl ? 'locked' : ''} ${k === 'k' ? 'headset' : ''}"><button class="arrow" data-p="${k}" data-d="-1" data-n="${n}">${icon('left')}</button><span>${part.label}${val}${need > lvl ? `<em>${icon('lock')} Level ${need}</em>` : ''}</span><button class="arrow" data-p="${k}" data-d="1" data-n="${n}">${icon('right')}</button></div>`;
   }).join('')}<button class="btn ghost small" id="avRand">${icon('dice')} Randomize</button><p class="hint center">🔒 items are a preview — level up to use them.</p></div>`;
 }
@@ -670,7 +747,38 @@ function levelChip() {
   return `<button class="acct-chip" id="acctBtn"><span class="lv">Lv ${lp.level}</span><span class="mini-xp"><i style="width:${lp.pct}%"></i></span>${esc(profile.name)}</button>`;
 }
 
+// character customisation: its own screen; changes only stick when you press SAVE
+function renderAvatarScreen() {
+  const d = ui.avDraft;
+  const changed = JSON.stringify(d) !== JSON.stringify(me.av);
+  app.innerHTML = `<div class="screen home av-screen ${enterCls('avatar')}">
+    <div class="av-top"><button class="back" id="avBack">${icon('left')} ${changed ? 'Cancel' : 'Back'}</button><b>YOUR CHARACTER</b><button class="btn small hot" id="avSave2">${icon('check')} Save</button></div>
+    <div class="home-av av-big">${avatarSVG(d, 170, 'float')}</div>
+    ${avatarEditor(d)}
+    <button class="btn big hot" id="avSave">${icon('check')} SAVE CHARACTER</button>
+  </div>`;
+  $$('.arrow').forEach((b) => b.onclick = () => {
+    const k = b.dataset.p, n = +b.dataset.n;
+    d[k] = (d[k] + +b.dataset.d + n) % n;
+    renderAvatarScreen();
+  });
+  $('#avRand').onclick = () => { ui.avDraft = randomUnlocked(myLevel()); renderAvatarScreen(); };
+  const save = () => {
+    const fix = lockedFix(d, myLevel());
+    if (fix.changed) toast('🔒 Locked items were swapped — level up to use them!', 'bad');
+    me.av = fix.av; storeAv();
+    toast('✅ Character saved!', 'good');
+    ui.home = 'main'; renderHome();
+  };
+  $('#avSave').onclick = save; $('#avSave2').onclick = save;
+  $('#avBack').onclick = async () => {
+    if (changed && !(await ask('Discard changes?', 'Your new look will not be saved.', 'Discard'))) return;
+    ui.home = 'main'; renderHome();
+  };
+}
+
 function renderHome() {
+  if (ui.home === 'avatar') return renderAvatarScreen();
   if (ui.home === 'join') {
     app.innerHTML = `<div class="screen home ${enterCls('join')}">
       <button class="back" id="back">${icon('left')} Back</button>
@@ -692,7 +800,7 @@ function renderHome() {
     <div class="home-top">${levelChip()}<button class="gear" id="prefsBtn">${icon('tool')}</button></div>
     <div class="logo"><span class="glitch" data-t="HACKER">HACKER</span><small>THE PARTY GAME</small></div>
     <div class="home-av" id="avTap">${avatarSVG(me.av, 150, 'float')}<button class="edit-av">${icon('edit')}</button></div>
-    ${ui.editAv ? avatarEditor() : '<p class="hint center tap-hint">Tap your character to customise it</p>'}
+    <p class="hint center tap-hint">Tap your character to customise it</p>
     <input id="name" class="inp name" maxlength="16" placeholder="Your gamer tag" value="${esc(me.name)}" autocomplete="off">
     <div class="choices">
       <button class="choice host" id="host"><span>${icon('monitor')}</span><b>HOST</b><small>Create a room</small></button>
@@ -704,14 +812,7 @@ function renderHome() {
   </div>`;
   ui.error = '';
   const keepName = () => { me.name = $('#name').value; };
-  $('#avTap').onclick = () => { keepName(); ui.editAv = !ui.editAv; renderHome(); };
-  $$('.arrow').forEach((b) => b.onclick = (e) => {
-    e.stopPropagation(); keepName();
-    const k = b.dataset.p, n = +b.dataset.n;
-    me.av[k] = (me.av[k] + +b.dataset.d + n) % n;
-    storeAv(); renderHome();
-  });
-  $('#avRand')?.addEventListener('click', () => { keepName(); me.av = randomUnlocked(myLevel()); storeAv(); renderHome(); });
+  $('#avTap').onclick = () => { keepName(); ui.avDraft = { ...me.av }; ui.home = 'avatar'; renderHome(); };
   $('#acctBtn').onclick = () => { keepName(); openProfile(); };
   $('#prefsBtn').onclick = openPrefs;
   $('#host').onclick = createRoom;
@@ -736,7 +837,7 @@ function settingControl(s, host) {
   }
   const v = S.settings[s.k];
   if (s.type === 'step') {
-    return `<div class="set"><span>${s.label}</span><div class="stepper"><button data-step="${s.k}" data-d="-1" ${!host || v <= s.min ? 'disabled' : ''}>${icon('minus')}</button><b>${fmtSetting(s, v)}</b><button data-step="${s.k}" data-d="1" ${!host || v >= s.max ? 'disabled' : ''}>${icon('plus')}</button></div></div>`;
+    return `<div class="set"><span>${s.label}${s.hint ? `<small class="set-hint">${s.hint}</small>` : ''}</span><div class="stepper"><button data-step="${s.k}" data-d="-1" ${!host || v <= s.min ? 'disabled' : ''}>${icon('minus')}</button><b>${fmtSetting(s, v)}</b><button data-step="${s.k}" data-d="1" ${!host || v >= s.max ? 'disabled' : ''}>${icon('plus')}</button></div></div>`;
   }
   if (s.type === 'toggle') return `<div class="set"><span>${s.label}</span><button class="switch ${v ? 'on' : ''}" data-toggle="${s.k}" ${host ? '' : 'disabled'}><i></i></button></div>`;
   const segIc = (o) => (s.k === 'place' ? icon(PLACES[o].ic) : '');
@@ -819,7 +920,7 @@ function renderWaiting() {
     <div class="row-btns"><button class="btn ghost small" id="howBtn">${icon('news')} How to play</button><button class="btn ghost small" id="prefsBtn">${icon('tool')} My sound settings</button></div>
     <h3>${icon('tool')} Settings ${host ? '<button class="btn tiny ghost" id="resetSet">Reset to default</button>' : '<small>· host decides</small>'}</h3>
     <div class="settings">${SETTINGS_UI.map((s) => settingControl(s, host)).join('')}</div>
-    ${host ? `<button class="btn big hot start" id="start" ${players.length < 3 ? 'disabled' : ''}>${icon('play')} START GAME</button>${players.length < 3 ? '<p class="hint center">Need at least 3 players.</p>' : ''}` : '<p class="hint center pulse-text">Waiting for the host to start…</p>'}
+    ${host ? `<div class="card host-tip">${icon('monitor')} <span><b>Host: your phone runs the game.</b> Keep the game open and the screen on (don't lock it or switch apps) — otherwise nobody's games count until you're back.</span></div><button class="btn big hot start" id="start" ${players.length < 3 ? 'disabled' : ''}>${icon('play')} START GAME</button>${players.length < 3 ? '<p class="hint center">Need at least 3 players.</p>' : ''}` : '<p class="hint center pulse-text">Waiting for the host to start…</p>'}
     <button class="btn ghost" id="leave">${icon('logout')} Leave room</button>
   </div>`;
   const patch = (k, v) => act({ type: 'settings', patch: { [k]: v } });
@@ -910,7 +1011,7 @@ function roleTools(p) {
   if (p.role === 'debugger') h += `<div class="card it"><b>${icon('bug')} Debugger</b>${powerBtn(p, 'debugBtn', 'bug', 'Debug a player')}</div>`;
   if (p.role === 'patcher') h += `<div class="card it"><b>${icon('tool')} Patcher</b>${S.breach ? `<button class="btn hot" id="patchBtn">${icon('tool')} FIX THE BREACH ALONE (+10%)</button>` : '<p class="hint">Waiting for a Dual Breach…</p>'}</div>`;
   if (['honeypot', 'tank', 'scout', 'captain', 'clutch'].includes(p.role)) {
-    const st = { honeypot: p.trapUsed ? 'Trap used.' : 'Trap armed 🍯', tank: p.tankUsed ? 'Armor used.' : 'Armor intact 🛡️', clutch: p.clutchUsed ? 'Clutch used.' : 'Clutch ready 😎', scout: 'Listening for hacks 📡', captain: 'Your vote counts double 👑' }[p.role];
+    const st = { honeypot: p.trapUsed ? 'Trap used.' : 'Trap armed 🍯', tank: p.tankUsed ? 'Armor used.' : 'Armor intact 🛡️', clutch: p.clutchUsed ? 'Clutch used.' : 'Clutch ready 😎', scout: 'Listening for hacks 📡', captain: 'You break ties 👑' }[p.role];
     h += `<div class="card it"><b>${icon(ROLE_INFO[p.role].ic)} ${ROLE_INFO[p.role].name}</b><p class="hint">${st}</p></div>`;
   }
   if (p.role === 'bounty') h += `<div class="card npc"><b>${icon('crosshair')} Your target</b><div class="mates"><span>${av(pl(p.target), 30)}${esc(pname(p.target))}</span></div>${p.npcWon ? '<p class="good-text">✅ Bounty collected!</p>' : '<p class="hint">Get them Vote Kicked.</p>'}</div>`;
@@ -934,7 +1035,13 @@ function renderPlaying() {
     if (d) v += duelCard(d);
     if (S.breach && p.role !== 'patcher') v += `<div class="card bad center">${icon('alert')} DUAL BREACH — ${S.breach.fixers.map((id) => esc(pname(id))).join(' & ')} must fix it! <b data-cd="${S.breach.until}"></b></div>`;
     if (p.task) v += `<div class="card"><div class="card-ic">${icon(SOLO[p.games[p.task.i]?.t]?.ic || 'zap')}</div><div><b>${SOLO[p.games[p.task.i]?.t]?.name} in progress</b><button class="btn small" id="openTask">Open it</button></div></div>`;
-    if (S.keyHolder === me.id) v += `<div class="card key"><div class="card-ic">${icon('key')}</div><div><b>You hold the Lobby Key</b><p class="hint">Only you can call a Lobby without a body.</p><button class="btn hot small" id="keyLobby">${icon('users')} Call everyone to the Lobby</button></div></div>`;
+    if (S.keyHolder === me.id) {
+      const max = S.settings.meetMax ?? 2, left = Math.max(0, max - (p.meets || 0));
+      const warm = (S.roundStartAt || S.startedAt || 0) + 30000;
+      v += `<div class="card key ${left ? '' : 'dead'}"><div class="card-ic">${icon('key')}</div><div><b>You hold the Lobby Key</b>`
+        + (left ? `<p class="hint">Only you can call a Lobby without a body. ${left}/${max} left for you this game.</p>${warm > t ? `<p class="hint">Warming up… usable in <b data-until="${warm}">${fmt(warm - t)}</b></p>` : ''}<button class="btn hot small" id="keyLobby">${icon('users')} Call everyone to the Lobby</button>`
+          : '<p class="hint">You used all your Lobbies this game — this key does nothing for you. Keep it secret. 😏</p>') + '</div></div>';
+    }
     if (p.lucky) v += `<div class="card lucky"><div class="card-ic">${icon('star')}</div><div><b>Lucky shield active</b><p class="hint">The next hack on you bounces off.</p></div></div>`;
     if (blocked) v += `<div class="card cool"><div class="card-ic">${icon('clock')}</div><div><b>Cooldown <span data-until="${blocked}">${fmt(blocked - t)}</span></b><p class="hint">Walk to your next game's location!</p></div></div>`;
     v += `<h3>${icon('activity')} Live feed</h3>${newsList(S.news.slice(-8).reverse())}`;
@@ -950,7 +1057,8 @@ function renderPlaying() {
     v += `<h2 class="tab-title">${icon('swords')} Duels</h2>`;
     if (d) v += duelCard(d);
     else {
-      v += `<button class="duel-big" id="duelRandom" ${blocked ? 'disabled' : ''}><span>${icon('crosshair')}</span><b>FIND ME AN OPPONENT</b><small>${blocked ? `Cooldown <span data-until="${blocked}">${fmt(blocked - t)}</span>` : 'The game picks someone at random. Find them, one of you scans the other, fight!'}</small></button>`;
+      const mustDuel = (p.soloStreak || 0) >= 2;
+      v += `<button class="duel-big" id="duelRandom" ${blocked && !mustDuel ? 'disabled' : ''}><span>${icon('crosshair')}</span><b>FIND ME AN OPPONENT</b><small>${blocked && !mustDuel ? `Cooldown <span data-until="${blocked}">${fmt(blocked - t)}</span>` : 'The game picks someone at random. Find them, one of you scans the other, fight!'}</small></button>`;
       v += `<div class="card"><b>Win a duel</b><p class="hint">+1 to the Network bar (+2 during a Power Surge). Beat the Lobby Key holder and you steal the key. Refusing a duel = 2-min game ban.</p></div>`;
       v += `<div class="card"><b>${icon('alert')} Forced duels</b><p class="hint">Every ${S.settings.forcedDuelMin} min the game throws two random players into a duel. 90 s to find each other — or both get a 2-min game ban.</p></div>`;
       v += `<h3>Duel games</h3><div class="duel-list">${Object.values(DUEL).map((G) => `<div>${icon(G.ic)}<b>${G.name}</b><small>${G.desc}</small></div>`).join('')}</div>`;
@@ -1067,8 +1175,11 @@ function renderLobby() {
     if (canVote) {
       const locked = !!myVote;
       v += `${locked ? `<p class="center good-text">${icon('lock')} Vote locked in — no take-backs.</p>` : '<p class="hint center">Choose carefully: you can\'t change your vote.</p>'}
-        <div class="pgrid">${alivePlayers.filter((x) => x.id !== me.id).map((x) => `<button class="pcard vote ${myVote === x.id ? 'sel' : ''}" data-v="${x.id}" ${locked ? 'disabled' : ''}>${av(x, 62)}<span>${esc(x.name)}</span></button>`).join('')}</div><button class="btn ghost vote ${myVote === 'skip' ? 'sel' : ''}" data-v="skip" ${locked ? 'disabled' : ''}>${icon('skip')} Skip vote</button>`;
-    } else v += `<p class="hint center">${p.alive ? 'You were late — no vote this round.' : 'You are out — you can\'t vote.'}</p>`;
+        <div class="pgrid">${alivePlayers.filter((x) => x.id !== me.id).map((x) => `<button class="pcard vote ${myVote === x.id ? 'sel' : ''} ${L.votes?.[x.id] ? 'has-voted' : ''}" data-v="${x.id}" ${locked ? 'disabled' : ''}>${av(x, 62)}<span>${esc(x.name)}</span>${L.votes?.[x.id] ? '<i class="voted-tag">✓ VOTED</i>' : late.includes(x.id) ? '<i class="voted-tag late">LATE</i>' : ''}</button>`).join('')}</div><button class="btn ghost vote ${myVote === 'skip' ? 'sel' : ''}" data-v="skip" ${locked ? 'disabled' : ''}>${icon('skip')} Skip vote</button>`;
+    } else {
+      v += `<p class="hint center">${p.alive ? 'You were late — no vote this round.' : 'You are out — you can\'t vote.'}</p>`;
+      v += `<div class="pgrid">${alivePlayers.map((x) => `<div class="pcard ${L.votes?.[x.id] ? 'has-voted' : ''}">${av(x, 62)}<span>${esc(x.name)}</span>${L.votes?.[x.id] ? '<i class="voted-tag">✓ VOTED</i>' : ''}</div>`).join('')}</div>`;
+    }
   }
   if (L.stage === 'result') {
     const o = L.outcome || {};
@@ -1079,7 +1190,7 @@ function renderLobby() {
       <div class="vbars">${[...rows].reverse().map(([id, n], i) => `<div class="vbar ${id === o.kicked ? 'top' : ''}" style="--d:${1.2 + i * 0.9}s">${av(pl(id), 36)}<span class="vname">${esc(pname(id))}</span><div class="vtrack"><div style="--w:${n / max * 100}%"></div></div><b>${n}</b></div>`).join('')}
         ${o.skip ? `<div class="vbar" style="--d:${1.2 + rows.length * 0.9}s"><span class="vskip">${icon('skip')}</span><span class="vname">Skip</span><div class="vtrack"><div style="--w:${o.skip / max * 100}%"></div></div><b>${o.skip}</b></div>` : ''}</div>
       <div class="suspense" style="--d:${1.2 + (rows.length + 1) * 0.9}s">and the player leaving the network is…</div>
-      <div class="verdict" style="--d:${3 + (rows.length + 1) * 0.9}s">${k ? av(k, 110, 'kicked') : `<div class="res-ic">${icon('skip')}</div>`}<p>${esc(o.text || '')}</p></div>
+      <div class="verdict" style="--d:${3 + (rows.length + 1) * 0.9}s">${k ? leaveScene(k) :`<div class="res-ic">${icon('skip')}</div>`}<p>${esc(o.text || '')}</p></div>
       <small>Game continues in <b data-cd="${L.endsAt}">${fmt(L.endsAt - hnow())}</b></small></div>`;
   }
   if (me.id === S.hostId) v += `<button class="btn small ghost" id="next">${icon('skip')} Host: skip to next step</button>`;

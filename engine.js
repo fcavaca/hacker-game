@@ -6,9 +6,9 @@
 // confirm a dare, receive a courier package, find someone in Hide & Seek, IT scans, Firewall
 // shields and Healer revives all work by scanning badges.
 
-import { SOLO_IDS, SENSOR_IDS, SOCIAL_IDS, EMERGENCY_IDS, DUEL_IDS, DUEL_BETTER, DEFAULT_SETTINGS, ZONES, DARES,
-  GAMER_ROLES, HACKER_ROLES, NPC_ROLES, MODIFIERS, ROLE_INFO } from './config.js?v=11';
-import { cleanAvatar, COLOR_NAMES, HAIR_COLOR_NAMES, partName } from './avatar.js?v=11';
+import { SOLO_IDS, SENSOR_IDS, SOCIAL_IDS, EMERGENCY_IDS, DUEL_IDS, DUEL_BETTER, DEFAULT_SETTINGS, ZONES, SPOT_TWISTS, DARES,
+  GAMER_ROLES, HACKER_ROLES, NPC_ROLES, MODIFIERS, ROLE_INFO } from './config.js?v=13';
+import { cleanAvatar, COLOR_NAMES, HAIR_COLOR_NAMES, partName } from './avatar.js?v=13';
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -86,7 +86,9 @@ export function createEngine(code, hostId, publish, saved) {
     if (list.length > 15) list.splice(0, list.length - 15);
     dirty = true;
   }
-  const noteAll = (text, kind, title, except = null) => { for (const x of inGame()) if (x.id !== except) note(x.id, text, kind, title); };
+  const noteAll = (text, kind, title, except = null, extra = null) => { for (const x of inGame()) if (x.id !== except) note(x.id, text, kind, title, extra); };
+  // "later" messages have no immediate effect, so phones hold them until you finish your game/duel
+  const LATER = { later: true, tapOnly: true };
   function news(text, extra) {
     S.news.push({ t: now(), text, ...(extra || {}) });
     if (S.news.length > 40) S.news.shift();
@@ -106,7 +108,11 @@ export function createEngine(code, hostId, publish, saved) {
     }
   }
 
-  function zonePick(prev) { const zs = ZONES[set().place] || ZONES.house; return pick(zs.filter((z) => z !== prev)); }
+  // a spot = a place + a silly twist ("Kitchen · standing on one leg")
+  function zonePick(prev) {
+    const zs = ZONES[set().place] || ZONES.house, base = String(prev || '').split(' · ')[0];
+    return `${pick(zs.filter((z) => z !== base))} · ${pick(SPOT_TWISTS)}`;
+  }
   function makeGames(n, p) {
     const pool = SOLO_IDS.filter((g) => !(p && p.nosens && SENSOR_IDS.includes(g)));
     const out = [];
@@ -149,6 +155,7 @@ export function createEngine(code, hostId, publish, saved) {
     gamers.forEach((p) => setRole(p, gSpecial.length ? gSpecial.shift() : 'gamer'));
     for (const p of players) {
       p.startRole = p.role;
+      p.meets = 0; p.soloStreak = 0; // fresh limits every game
       // only 4 games are visible at the start; every 2 finished games reveal 2 more (until all are shown)
       const all = makeGames(set().gamesPerPlayer, p);
       p.games = all.slice(0, 4); p.queue = all.slice(4); p.sinceReveal = 0;
@@ -158,7 +165,7 @@ export function createEngine(code, hostId, publish, saved) {
     S.goal = Math.max(3, Math.round(gamers.length * set().gamesPerPlayer * 0.75));
     const t = now();
     Object.assign(S, { credits: 0, round: 1, duels: {}, lobby: null, result: null, news: [], log: [], notes: {},
-      penaltyAt: 0, penaltyPending: false, phase: 'playing', startedAt: t, totalMs: set().timerMin * MIN, timerEndsAt: t + set().timerMin * MIN,
+      penaltyAt: 0, penaltyPending: false, phase: 'playing', startedAt: t, roundStartAt: t, totalMs: set().timerMin * MIN, timerEndsAt: t + set().timerMin * MIN,
       nextForcedAt: t + set().forcedDuelMin * MIN, nextEventAt: set().events === 'off' ? 0 : t + 5 * MIN,
       surgeUntil: 0, lagUntil: 0, freezeAllUntil: 0, bountyOpen: false, breach: null, sabReadyAt: t + 5 * MIN, breachReadyAt: t + 5 * MIN,
       lagUsed: false, wipeUsed: false, keyWiped: false, event: null });
@@ -199,20 +206,24 @@ export function createEngine(code, hostId, publish, saved) {
   function npcWin(p, why) {
     if (p.npcWon) return;
     p.npcWon = true;
-    note(p.id, why, 'win', '🏆 YOU WON (NPC)');
+    note(p.id, why, 'win', '🏆 YOU WON (NPC)', LATER);
     log(`🏆 NPC ${p.name} (${p.role}) achieved their goal`);
   }
 
   // ---------- Lobby Key ----------
+  const meetsLeft = (p) => Math.max(0, (set().meetMax ?? 2) - (p.meets || 0));
   function giveKey() {
     if (S.keyWiped) { S.keyHolder = null; return; }
     const prev = S.keyHolder;
     const cands = alive().filter((p) => p.id !== prev);
     const next = cands.length ? pick(cands) : alive()[0];
-    if (prev && P(prev)?.alive && (!next || next.id !== prev)) note(prev, '🔑 The Lobby Key slipped away from you…');
+    if (prev && P(prev)?.alive && (!next || next.id !== prev)) note(prev, '🔑 The Lobby Key slipped away from you…', 'info', null, { later: true });
     S.keyHolder = next ? next.id : null;
     S.keyMovesAt = now() + set().keyMoveMin * MIN;
-    if (next && next.id !== prev) note(next.id, 'Only you can call everyone to the Lobby without a body. Use it wisely.', 'alert', '🔑 YOU GOT THE KEY');
+    if (next && next.id !== prev) {
+      const left = meetsLeft(next);
+      note(next.id, left > 0 ? `Only you can call everyone to the Lobby without a body. Use it wisely. (${left} ${left === 1 ? 'Lobby' : 'Lobbies'} left for you this game)` : 'You have the key… but you already used all your Lobbies this game. It does NOTHING for you. Act like it does. 😏', 'alert', '🔑 YOU GOT THE KEY', LATER);
+    }
     dirty = true;
   }
 
@@ -228,14 +239,17 @@ export function createEngine(code, hostId, publish, saved) {
     if (p.sinceReveal >= 2 && p.queue?.length) {
       p.sinceReveal = 0;
       p.games.push(...p.queue.splice(0, 2));
-      note(p.id, '🆕 2 new games unlocked!', 'good');
+      note(p.id, '🆕 2 new games unlocked!', 'good', null, { later: true });
     }
     if (p.team === 'gamer') {
       addCredits(1);
-      if (!p.lucky && Math.random() < 0.1) { p.lucky = true; note(p.id, 'A one-time anti-hack shield. The next hack on you bounces off.', 'good', '🍀 LUCKY!'); }
+      note(p.id, `📶 +1 to the network — now ${Math.min(100, Math.round(S.credits / S.goal * 100))}%`, 'good');
+      if (!p.lucky && Math.random() < 0.1) { p.lucky = true; note(p.id, 'A one-time anti-hack shield. The next hack on you bounces off.', 'good', '🍀 LUCKY!', LATER); }
       if (S.bountyOpen) { S.bountyOpen = false; p.shield = true; note(p.id, 'You were first! You get a Firewall shield.', 'win', '🎯 BOUNTY CLAIMED'); news(`🎯 ${p.name} claimed the bounty!`); }
     }
-    news(`🟢 Someone finished a game at the ${g.z}`);
+    if (p.team === 'hacker') note(p.id, '🎭 Fake game done. It doesn\'t fill the network — but now you look busy.', 'info');
+    if (p.team === 'npc') note(p.id, '🤖 NPC game done. It doesn\'t fill the network — you play for yourself.', 'info');
+    news(`🟢 Someone finished a game at the ${String(g.z).split(' · ')[0]}`);
     if (p.games.every((x) => x.done) && !p.queue?.length) note(p.id, '🏁 All your games are done! Help with duels and Hide & Seek.', 'good');
   }
 
@@ -380,7 +394,10 @@ export function createEngine(code, hostId, publish, saved) {
     if (!A || !B) return;
     let res; // 1 = A wins, -1 = B wins, 0 = draw
     if (winnerId) res = winnerId === d.a ? 1 : -1;
-    else if (better === 'rps') res = rpsWinner(d.score[d.a], d.score[d.b]);
+    else if (better === 'judge' || better === 'potato') {
+      for (const x of [A, B]) note(x.id, better === 'judge' ? 'Nobody judged your aura in time. Draw.' : 'The bomb was a dud. Draw.', 'info', '🤝 DRAW');
+      return;
+    } else if (better === 'rps') res = rpsWinner(d.score[d.a], d.score[d.b]);
     else {
       const worst = better === 'low' ? Infinity : -Infinity;
       const adj = (x, s) => (s == null ? worst : (x.mod === 'noob' || S.lagUntil > t) ? (better === 'low' ? s * 1.25 : s * 0.8) : s);
@@ -415,14 +432,14 @@ export function createEngine(code, hostId, publish, saved) {
   function badgeScan(p, a) {
     const owner = inGame().find((x) => x.badge === String(a.code).trim());
     if (!owner) return note(p.id, '❓ Unknown code. Try again.', 'bad');
-    if (owner === p) return note(p.id, '🤳 That\'s your own badge, genius.');
+    if (owner === p) return note(p.id, 'You scanned YOURSELF. Bold move. Still not a Hacker detector. Nothing happened.', 'info', '🤳 THAT\'S YOU, GENIUS', { who: p.id, tapOnly: true });
     if (S.phase === 'lobby') {
       const L = S.lobby;
       if (L.stage === 'gather' && owner.id === L.by && p.alive) {
         L.arrived[p.id] = true;
         note(p.id, '✅ Checked in to the Lobby.', 'good');
         if (alive().every((x) => L.arrived[x.id])) advanceLobby();
-      } else note(p.id, '🛋️ In the Lobby you can only scan the person who called it (to check in).');
+      } else note(p.id, `That's ${owner.name}. In the Lobby you only scan the person who CALLED it, to check in. Nothing happened.`, 'info', '🛋️ WRONG PERSON', { who: owner.id, tapOnly: true });
       return;
     }
     if (!p.alive) return;
@@ -456,9 +473,21 @@ export function createEngine(code, hostId, publish, saved) {
       owner.found = true; startLobby('afk', p, owner); return;
     }
     if (a.mode === 'it') return itScan(p, owner);
+    // Aura Duel: a THIRD player judges by scanning the winner's badge
+    const jd = Object.values(S.duels).find((x) => x.g === 'judge' && x.st === 'active' && now() >= x.startAt && (x.a === owner.id || x.b === owner.id));
+    if (jd) {
+      if (jd.a === p.id || jd.b === p.id) return note(p.id, 'You can\'t judge your own Aura Duel 💀 Find a third player!', 'bad');
+      const loser = P(jd.a === owner.id ? jd.b : jd.a);
+      note(p.id, `You crowned ${owner.name} over ${loser?.name}. The aura has been judged. ⚖️`, 'good', '⚖️ JUDGED', { who: owner.id });
+      log(`⚖️ ${p.name} judged ${owner.name}'s aura higher than ${loser?.name}'s`);
+      resolveDuel(jd, owner.id);
+      return;
+    }
     const d = duelOf(p);
     if (d && (d.a === owner.id || d.b === owner.id) && d.st !== 'active') {
       d.st = 'active'; d.startAt = now() + 3500;
+      // Hot Potato: random first holder, the bomb goes off after 20–40 s (nobody knows when)
+      if (d.g === 'potato') d.pot = { holder: pick([d.a, d.b]), since: d.startAt, boom: d.startAt + 20000 + Math.random() * 20000, passes: 0 };
       p.task = p.task?.kind === 'vanish' ? p.task : null; owner.task = owner.task?.kind === 'vanish' ? owner.task : null;
       return;
     }
@@ -490,7 +519,14 @@ export function createEngine(code, hostId, publish, saved) {
       return;
     }
     if (p.task?.kind === 'courier' && p.task.target === owner.id) return note(p.id, `📦 Wrong way round: ${owner.name} must scan YOUR badge.`);
-    note(p.id, `👋 That's ${owner.name}'s badge. Nothing happens right now.`);
+    // nothing to do with this scan: a big silly screen, so nobody thinks something secret happened
+    const LOL = [`You scanned ${owner.name} like a barcode at Netto. They're not on sale. Nothing happened.`,
+      `Beep boop. ${owner.name}'s badge says: "stop scanning me, weirdo". Nothing happened.`,
+      `You just scanned ${owner.name} for no reason. That's -50 aura. Nothing happened.`,
+      `Congrats, you found ${owner.name}. They were never lost. Nothing happened.`,
+      `${owner.name} has been scanned. Results: 100% human, 0% useful. Nothing happened.`,
+      `Error 418: ${owner.name} is a teapot. Nothing happened.`];
+    note(p.id, `${pick(LOL)} (Badges do something during duels, social games, the Lobby check-in and role powers.)`, 'info', '🤨 NOTHING HAPPENED', { who: owner.id, tapOnly: true });
   }
 
   // ---------- Lobby ----------
@@ -535,6 +571,7 @@ export function createEngine(code, hostId, publish, saved) {
       if (S.phase === 'ended') { dirty = true; return; }
       S.phase = 'playing'; S.lobby = null; S.round++;
       S.timerEndsAt = t + S.timeLeftAtPause;
+      S.roundStartAt = t; // the key only works 30 s into each round
       S.nextForcedAt = t + set().forcedDuelMin * MIN;
       if (S.penaltyPending) { S.penaltyPending = false; S.penaltyAt = t + MIN; }
       S.keyWiped = false;
@@ -549,19 +586,26 @@ export function createEngine(code, hostId, publish, saved) {
 
   function tally() {
     const L = S.lobby;
-    const counts = {}; let skip = 0;
+    // every vote counts 1 (so the bars never give the Pro Player away). On a tie, the Pro Player's choice wins.
+    const counts = {}; let skip = 0, capVote = null;
     for (const [voter, target] of Object.entries(L.votes)) {
       const v = P(voter);
       if (!v?.alive || L.late.includes(voter)) continue;
-      const w = v.role === 'captain' ? 2 : 1;
-      if (target === 'skip') skip += w; else counts[target] = (counts[target] || 0) + w;
+      if (v.role === 'captain') capVote = target;
+      if (target === 'skip') skip++; else counts[target] = (counts[target] || 0) + 1;
     }
     const ranked = Object.entries(counts).sort((a, b) => b[1] - a[1]);
     for (const [id, n] of ranked) if (P(id)) P(id).votes += n;
-    const top = ranked[0];
-    const tie = ranked.length > 1 && ranked[1][1] === top[1];
-    const board = { counts, skip };
-    if (top && !tie && top[1] > skip) {
+    const best = Math.max(skip, ranked[0]?.[1] || 0);
+    const tied = [...ranked.filter((r) => r[1] === best).map((r) => r[0]), ...(skip === best && best > 0 ? ['skip'] : [])];
+    let pickId = null, broke = false;
+    if (best > 0 && tied.length === 1) pickId = tied[0];
+    else if (tied.length > 1 && capVote && tied.includes(capVote)) { pickId = capVote; broke = true; }
+    if (pickId === 'skip') pickId = null;
+    const top = pickId ? [pickId, counts[pickId]] : ranked[0];
+    const tie = tied.length > 1 && !broke;
+    const board = { counts, skip, broke };
+    if (pickId) {
       const k = P(top[0]);
       k.alive = false; k.kicked = true; k.task = null;
       if (k.duel && S.duels[k.duel]) endDuel(S.duels[k.duel]);
@@ -569,14 +613,16 @@ export function createEngine(code, hostId, publish, saved) {
       const r = set().reveal;
       const teamTxt = k.team === 'hacker' ? 'a HACKER 💀' : k.team === 'npc' ? 'an NPC 🤖' : 'a Gamer 🎮';
       const what = r === 'role' ? ` They were: ${ROLE_NAME(k)}.` : r === 'team' ? (k.team === 'hacker' ? ' They were a HACKER 💀' : ` They were ${teamTxt}… not a Hacker.`) : '';
-      L.outcome = { kicked: k.id, text: `${k.name} got Vote Kicked!${what}`, team: r === 'none' ? null : k.team, ...board };
+      L.outcome = { kicked: k.id, text: `${broke ? 'It was a TIE… but someone\'s vote weighs more. 👀 ' : ''}${k.name} got Vote Kicked!${what}`, team: r === 'none' ? null : k.team, ...board };
       log(`🥾 ${k.name} (${ROLE_INFO[k.role]?.name || k.role}) was Vote Kicked with ${top[1]} votes`);
       if (k.role === 'troll') npcWin(k, 'They actually kicked you. Masterful trolling.');
-      else note(k.id, 'The group voted you out. Follow the rest from the sidelines — and no talking!', 'lose', 'KICKED', { delay: Math.round((3 + (Object.keys(counts).length + 1) * 0.9) * 1000 + 400) }); // shown after the vote reveal
+      else note(k.id, 'The group voted you out. Follow the rest from the sidelines — and no talking!', 'lose', 'KICKED', { scene: k.id, delay: Math.round((3 + (Object.keys(counts).length + 1) * 0.9) * 1000 + 400) }); // shown after the vote reveal
       for (const b of inGame()) if (b.role === 'bounty' && b.target === k.id && b.id !== k.id) npcWin(b, `${k.name} got kicked. Bounty collected. 💰`);
     } else {
       const text = !top && !skip ? 'Nobody voted. Nobody gets kicked.'
-        : skip >= (top ? top[1] : 0) ? 'The Lobby skipped. Nobody gets kicked.' : 'It\'s a tie. Nobody gets kicked.';
+        : broke ? 'It was a TIE… but someone\'s vote weighs more. 👀 The Lobby skipped. Nobody gets kicked.'
+        : tie ? `It's a tie (${tied.map((id) => id === 'skip' ? `skip ${skip}` : `${P(id)?.name} ${counts[id]}`).join(' vs ')}). Nobody gets kicked.`
+        : 'The Lobby skipped. Nobody gets kicked.';
       L.outcome = { kicked: null, text, ...board };
       if (Math.random() < 0.5) S.penaltyPending = true;
     }
@@ -596,13 +642,13 @@ export function createEngine(code, hostId, publish, saved) {
     if (k === 'surge') { S.surgeUntil = t + 2 * MIN; noteAll('For 2 minutes, every duel win gives DOUBLE progress. Go fight!', 'alert', '⚡ POWER SURGE'); news('⚡ POWER SURGE — duel wins count double for 2 min!'); }
     if (k === 'leak') {
       const v = pick(alive());
-      if (v) { noteAll(`Leaked file: ${v.name} is ${ROLE_NAME(v)}.`, 'alarm', '🔓 DATA LEAK'); news(`🔓 DATA LEAK: ${v.name} is ${ROLE_NAME(v)}`); log(`🔓 Data leak revealed ${v.name}`); }
+      if (v) { noteAll(`Leaked file: ${v.name} is ${ROLE_NAME(v)}.`, 'alarm', '🔓 DATA LEAK', null, LATER); news(`🔓 DATA LEAK: ${v.name} is ${ROLE_NAME(v)}`); log(`🔓 Data leak revealed ${v.name}`); }
     }
     if (k === 'update') { S.freezeAllUntil = t + 20000; noteAll('Every phone is frozen for 20 seconds. Anyone in the middle of a game must restart it.', 'alert', '🔄 SYSTEM UPDATE'); news('🔄 SYSTEM UPDATE — everyone frozen for 20 s'); }
     if (k === 'bounty') { S.bountyOpen = true; noteAll('The first Gamer to finish a game gets a Firewall shield. GO!', 'alert', '🎯 BOUNTY'); news('🎯 BOUNTY: first finished game wins a shield'); }
     if (k === 'key') {
       const h = P(S.keyHolder);
-      if (h) { noteAll(`${h.name} holds the Lobby Key right now. Beat them in a duel to steal it!`, 'alert', '🔑 KEY EXPOSED'); news(`🔑 KEY EXPOSED: ${h.name} has it`); }
+      if (h) { noteAll(`${h.name} holds the Lobby Key right now. Beat them in a duel to steal it!`, 'alert', '🔑 KEY EXPOSED', null, LATER); news(`🔑 KEY EXPOSED: ${h.name} has it`); }
     }
     dirty = true;
   }
@@ -627,7 +673,7 @@ export function createEngine(code, hostId, publish, saved) {
     } else if (kind === 'wipe') {
       if (S.wipeUsed) return note(p.id, 'Key Wipe already used.');
       S.wipeUsed = true; S.keyWiped = true; S.keyHolder = null;
-      noteAll('The Lobby Key is gone until the next Lobby.', 'alert', '🔑 KEY WIPED'); news('🔑 KEY WIPED — no Lobby Key until the next Lobby');
+      noteAll('The Lobby Key is gone until the next Lobby.', 'alert', '🔑 KEY WIPED', null, LATER); news('🔑 KEY WIPED — no Lobby Key until the next Lobby');
     } else return;
     log(`💣 ${p.name} used sabotage: ${kind}`);
     S.sabReadyAt = t + 5 * MIN;
@@ -679,7 +725,10 @@ export function createEngine(code, hostId, publish, saved) {
       case 'gameDone': {
         const g = p.games[a.i];
         // Hackers' games don't count, so they can play any game at any time (no cooldown, no ban)
-        if (!g || g.done || SOCIAL_IDS.includes(g.t) || inActiveDuel(p) || (t < p.readyAt - 500 && !freePlay(p))) return true;
+        // tell the player WHY a finished game didn't count (before, it failed silently)
+        if (!g || g.done || SOCIAL_IDS.includes(g.t)) return true;
+        if (inActiveDuel(p)) { note(p.id, '⚔️ You are in a duel — that game didn\'t count.', 'bad'); return true; }
+        if (t < p.readyAt - 500 && !freePlay(p)) { note(p.id, `⏳ Too fast! Cooldown for ${Math.ceil((p.readyAt - t) / 1000)} s more — that game didn't count.`, 'bad'); return true; }
         if ((p.soloStreak || 0) >= 2) { note(p.id, '⚔️ Duel someone first — max 2 games in a row.', 'bad'); return true; }
         p.soloStreak = (p.soloStreak || 0) + 1;
         if (a.ok) gameWon(p, a.i);
@@ -699,7 +748,8 @@ export function createEngine(code, hostId, publish, saved) {
       case 'badge': badgeScan(p, a); return true;
       case 'duelRandom': {
         if (p.duel) return true;
-        if (t < p.readyAt - 500) { note(p.id, '⏳ Cooldown first — keep walking!'); return true; }
+        // after 2 games in a row the "find someone" button works even during the cooldown
+        if (t < p.readyAt - 500 && (p.soloStreak || 0) < 2) { note(p.id, '⏳ Cooldown first — keep walking!'); return true; }
         const free = alive().filter((q) => q.id !== p.id && !q.duel && !q.remote);
         if (!free.length) { note(p.id, '⚔️ Nobody is free to duel right now.'); return true; }
         const q = pick(free);
@@ -723,10 +773,18 @@ export function createEngine(code, hostId, publish, saved) {
         if (d && d.a === p.id && !d.forced && d.st !== 'active') { endDuel(d); note(d.b, `${p.name} cancelled the duel.`); }
         return true;
       }
+      case 'potPass': {
+        const d = S.duels[a.id];
+        if (!d || d.g !== 'potato' || d.st !== 'active' || !d.pot || d.pot.holder !== p.id || t < d.startAt) return true;
+        if (t - d.pot.since < 1500) return true; // you must hold it a moment (and cut the wires on your phone)
+        d.pot.holder = d.a === p.id ? d.b : d.a; d.pot.since = t; d.pot.passes++;
+        return true;
+      }
       case 'duelScore': {
         const d = S.duels[a.id];
         if (!d || d.st !== 'active' || (d.a !== p.id && d.b !== p.id) || d.score[p.id] != null) return true;
         const better = DUEL_BETTER[d.g];
+        if (better === 'judge' || better === 'potato') return true; // decided by the judge / the bomb, not by scores
         d.score[p.id] = better === 'rps' ? String(a.score).slice(0, 3) : Number(a.score);
         const other = d.a === p.id ? d.b : d.a;
         if (d.score[other] != null) resolveDuel(d);
@@ -760,7 +818,15 @@ export function createEngine(code, hostId, publish, saved) {
         else goAfk(p, p.remote.by);
         return true;
       }
-      case 'keyLobby': { if (S.keyHolder === p.id) startLobby('key', p, null); return true; }
+      case 'keyLobby': {
+        if (S.keyHolder !== p.id) return true;
+        const wait = 30000 - (t - (S.roundStartAt || S.startedAt || 0));
+        if (wait > 0) { note(p.id, `🔑 The key is still warming up — wait ${Math.ceil(wait / 1000)} s.`, 'bad'); return true; }
+        if (meetsLeft(p) <= 0) { note(p.id, `You already called ${set().meetMax ?? 2} ${(set().meetMax ?? 2) === 1 ? 'Lobby' : 'Lobbies'} this game. The key does nothing for you now… but nobody else knows that. 😏`, 'bad', '🔑 KEY IS DEAD', { tapOnly: true }); return true; }
+        p.meets = (p.meets || 0) + 1;
+        startLobby('key', p, null);
+        return true;
+      }
       // ----- role powers -----
       case 'fwSelf': {
         if (p.role !== 'firewall' || !powerReady(p)) return true;
@@ -968,6 +1034,13 @@ export function createEngine(code, hostId, publish, saved) {
           for (const [h, q] of [[A, B], [B, A]]) {
             if (h && q && canHack(h) && !frozen(h) && q.alive && q.team !== 'hacker' && !q.pending && !q.remote) addHackSecond(h, q);
           }
+        }
+        // Hot Potato: whoever holds the bomb when it explodes loses
+        if (d.st === 'active' && d.g === 'potato' && d.pot && t >= d.pot.boom) {
+          const loser = d.pot.holder;
+          note(loser, '💥 BOOM! The bomb exploded in your hands.', 'bad');
+          resolveDuel(d, loser === d.a ? d.b : d.a);
+          continue;
         }
         const limit = d.forced ? 90000 : set().duelTimeout * 1000;
         if (d.st === 'pending' && t - d.at > limit) {

@@ -1,5 +1,22 @@
 # HACKER — the party game · prototype v0.6 (18 Nov 2026)
 
+**New in v0.9**
+- **Removed:** Bug Squash, Terminal, File Sort, Captcha, Spam Filter, Password Picker, Hack the Mainframe, Firewall Defender.
+- **Odd One Out** is now emoji-based and funnier (near-twin emojis, then flipped/turned ones, with a silly hint each round).
+- **14 new solo games:** Brainrot Translator, Sigma Grindset, Fanum Tax, Shake to Charge (motion), Balance the Wifi (tilt), Delulu Detector, Spot the NPC, Group Chat Chaos, Stop at 67%, Don't Get Cooked, Silent Disco (sound), Unmute Yourself (mic), Cap or No Cap, Speedrun Any%.
+- **6 new duels:** 67 Race, Brainrot Quiz Race, Tung Tung Survival, Shake Off (20 s), Hot Potato (cut 3 wires before you can pass; the bomb goes off after a secret 20–40 s), Aura Duel (a third player judges and scans the winner).
+- Emergency/breach fix games now use the new short games.
+
+**New in v0.8**
+- **3 new games:** Aura Farm (tap in the aura zone, reach 1000 aura), Make 67 (fill the blanks so it equals 67), Tung Tung Escape (run from an angry log with a bat). Alien Cipher is harder (2 words, mirrored twin symbols, 3 tries). Decrypt has a ⌫ Back button.
+- **Game spots:** every game says a place AND a silly twist ("Kitchen · standing on one leg"), and the phone counts your steps before GO unlocks (host setting, 15 by default).
+- **Lobby Key:** only works 30 s into each round, and each player can call max 2 Lobbies per game (host setting). After that the key still moves to you, but does nothing.
+- **Pro Player** is now the secret tie-breaker (the old double vote turned 2-vs-1 into ties and showed in the vote bars).
+- **Screens:** role first, then the key message. Messages with no immediate effect (key, data leak, lucky…) wait until your game or duel ends. All win/lose screens close only on tap. DUEL TIME has a *Find someone now* button. Scanning a badge that does nothing shows a big funny screen. Voted-out players get up from their computer and walk away.
+- **Votes:** a player's square turns green once they voted.
+- **Feedback:** every finished game says if it counted (+1 network, cooldown, Hacker/NPC fake game). The host sees a "keep your screen on" tip, and phones stay awake during a game.
+- **Characters:** hoodies have a hood. Customisation is its own screen with a SAVE button.
+
 **New in v0.7 (after the first phone test)**
 - **Players:** one player ID per phone (no more double players), *Leave* really leaves (mid-game = out of the game), phones that close the game drop out of the waiting room after 45 s, and when the host ends the room everyone sees "ROOM CLOSED".
 - **Joining late:** you see the live feed and join automatically when the next game starts.
