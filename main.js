@@ -1,13 +1,13 @@
 // SCREENS — what each player sees. Every phone runs this file. The host's phone also runs the engine.
 
-import { connect, ONLINE } from './net.js?v=18';
-import { createEngine } from './engine.js?v=18';
-import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=18';
-import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=18';
-import { icon } from './icons.js?v=18';
-import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=18';
-import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=18';
-import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=18';
+import { connect, ONLINE } from './net.js?v=19';
+import { createEngine } from './engine.js?v=19';
+import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=19';
+import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=19';
+import { icon } from './icons.js?v=19';
+import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=19';
+import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=19';
+import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=19';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];

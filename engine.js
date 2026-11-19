@@ -7,8 +7,8 @@
 // shields and Healer revives all work by scanning badges.
 
 import { SOLO_IDS, SENSOR_IDS, SOCIAL_IDS, EMERGENCY_IDS, DUEL_IDS, DUEL_BETTER, DEFAULT_SETTINGS, ZONES, SPOT_TWISTS, DARES,
-  GAMER_ROLES, HACKER_ROLES, NPC_ROLES, MODIFIERS, ROLE_INFO } from './config.js?v=18';
-import { cleanAvatar, COLOR_NAMES, HAIR_COLOR_NAMES, partName } from './avatar.js?v=18';
+  GAMER_ROLES, HACKER_ROLES, NPC_ROLES, MODIFIERS, ROLE_INFO } from './config.js?v=19';
+import { cleanAvatar, COLOR_NAMES, HAIR_COLOR_NAMES, partName } from './avatar.js?v=19';
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };

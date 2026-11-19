@@ -84,7 +84,16 @@ export function avatarSVG(raw, size = 48, extra = '') {
   const up = hd === 'up';
   const kc = hood, kcD = darken(kc, 0.65); // headset = same colour as the hoodie
   let s = '';
-  // hair behind the head (hidden inside the hood when it's up)
+  // hood UP shapes: the outer hood (sits a bit loose, falls onto the shoulders) and the face opening
+  const HOOD_OUT = 'M15 84 Q13 52 21 31 Q31 10 50 10 Q69 10 79 31 Q87 52 85 84 Z';
+  const HOOD_OPEN = 'M29 80 Q25 62 26.5 46 Q28 21 50 21 Q72 21 73.5 46 Q75 62 71 80 Z';
+  // hood up: the dark inside of the hood, then the hair behind the head shows inside the opening only
+  if (up) {
+    s += `<defs><clipPath id="av-hood-clip"><path d="${HOOD_OPEN}"/></clipPath></defs><path d="${HOOD_OPEN}" fill="${hoodD}"/>`;
+    const inside = { long: `<path d="M25 44 Q22 80 30 88 L70 88 Q78 80 75 44 Z" fill="${hair}"/>`, bob: `<path d="M24 40 Q21 68 29 72 L71 72 Q79 68 76 40 Z" fill="${hair}"/>`, 'wolf cut': `<path d="M23 42 L22 66 L77 66 L77 42 Z" fill="${hair}"/>`, braids: `<path d="M24 42 L24 62 L76 62 L76 42 Z" fill="${hair}"/>`, locs: `<path d="M24 42 L24 70 L76 70 L76 42 Z" fill="${hair}"/>` }[hairS];
+    if (inside) s += `<g clip-path="url(#av-hood-clip)">${inside}</g>`;
+  }
+  // hair behind the head (hood down / no hood)
   if (!up) {
     if (hairS === 'long') s += `<path d="M25 44 Q22 80 30 88 L70 88 Q78 80 75 44 Z" fill="${hair}"/>`;
     if (hairS === 'ponytail') s += `<ellipse cx="77" cy="50" rx="7" ry="15" fill="${hair}" transform="rotate(18 77 50)"/>`;
@@ -101,7 +110,6 @@ export function avatarSVG(raw, size = 48, extra = '') {
   }
   // hood DOWN: lying behind the neck · hood UP: the back of the hood behind the head
   if (hd === 'down') s += `<path d="M21 88 Q16 57 50 54 Q84 57 79 88 Z" fill="${hood}"/><path d="M30 84 Q29 64 50 62 Q71 64 70 84 Z" fill="${hoodD}"/>`;
-  if (up) s += `<ellipse cx="50" cy="45" rx="30" ry="32" fill="${hoodD}"/>`; // the dark inside of the hood, behind the head
   // body: hoodie (or a plain sweater without a hood)
   s += `<path d="M12 100 Q14 78 50 75 Q86 78 88 100 Z" fill="${hood}"/>`;
   if (hd === 'down') s += `<path d="M22 86 Q36 79 50 80 Q64 79 78 86" fill="none" stroke="${hoodD}" stroke-width="2.4" opacity=".7"/>`; // hood seam
@@ -222,10 +230,19 @@ export function avatarSVG(raw, size = 48, extra = '') {
   const mouthPart = acc === 'hacker mask' ? '' : mouthSvg;
   // hood UP: the hood frames the face and covers the hair (only a fringe peeks out)
   // the rim is a ring around the face: hugs the head like a real hoodie, with a seam on top and a soft shadow inside
-  const hoodFront = up ? `<path fill-rule="evenodd" d="M20 45 A30 32 0 1 1 80 45 A30 32 0 1 1 20 45 Z M26.5 48 A23.5 26 0 1 0 73.5 48 A23.5 26 0 1 0 26.5 48 Z" fill="${hood}"/>`
-    + `<ellipse cx="50" cy="48" rx="23.5" ry="26" fill="none" stroke="${hoodD}" stroke-width="2.2"/><path d="M50 13.5 V22" stroke="${hoodD}" stroke-width="1.8" stroke-linecap="round" opacity=".8"/>`
-    + `<path d="M24 30 Q30 18 42 15" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".18"/>` : '';
-  const hairTop = hideHair ? '' : up ? `<defs><clipPath id="av-hood-clip"><ellipse cx="50" cy="48" rx="23.5" ry="26"/></clipPath></defs><g clip-path="url(#av-hood-clip)">${top}</g>` : top;
-  s += hairTop + hoodFront + faceSvg + fh + brow + eyeSvg + mouthPart + accSvg + headset;
+  const hoodFront = up ? `<path fill-rule="evenodd" d="${HOOD_OUT} ${HOOD_OPEN}" fill="${hood}"/>`
+    + `<path d="M29 80 Q25 62 26.5 46 Q28 21 50 21 Q72 21 73.5 46 Q75 62 71 80" fill="none" stroke="${hoodD}" stroke-width="2.4" stroke-linecap="round"/>`
+    + `<path d="M50 10.5 V20" stroke="${hoodD}" stroke-width="1.8" stroke-linecap="round" opacity=".8"/>`
+    + `<path d="M19 60 Q18 72 20 82 M81 60 Q82 72 80 82" fill="none" stroke="${hoodD}" stroke-width="1.6" stroke-linecap="round" opacity=".55"/>`
+    + `<path d="M22 32 Q29 17 42 13.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".18"/>` : '';
+  // hood UP: long hair falls OUT of the hood, over the hoodie
+  const fall = !up ? '' : {
+    long: [1, -1].map((d) => { const x = (v) => 50 - d * (50 - v); return `<path d="M${x(27)} 48 Q${x(23)} 70 ${x(26)} 93 L${x(31)} 89 L${x(34)} 93 Q${x(32)} 72 ${x(33.5)} 58 Z" fill="${hair}"/>`; }).join(''),
+    braids: [31, 69].map((x) => [62, 69, 76, 83].map((y, i) => `<ellipse cx="${x + (x < 50 ? -1 : 1) * (i % 2)}" cy="${y}" rx="${4.4 - i * 0.25}" ry="4.2" fill="${hair}" stroke="rgba(255,255,255,.28)" stroke-width="1.1"/>`).join('') + `<path d="M${x - 3} 87.5 h6" stroke="#ff4d4d" stroke-width="2.4" stroke-linecap="round"/>`).join(''),
+    locs: [[28, 50, 26, 88], [32, 58, 31, 92], [72, 50, 74, 88], [68, 58, 69, 92]].map(([x1, y1, x2, y2]) => `<path d="M${x1} ${y1} Q${(x1 + x2) / 2 + (x1 < 50 ? -2 : 2)} ${(y1 + y2) / 2} ${x2} ${y2}" stroke="${hair}" stroke-width="5" stroke-linecap="round" fill="none"/>`).join(''),
+    'wolf cut': `<path d="M27 48 L25 72 L29 67 L31 76 L34 68 L33 56 Z M73 48 L75 72 L71 67 L69 76 L66 68 L67 56 Z" fill="${hair}"/>`,
+  }[hairS] || '';
+  const hairTop = hideHair ? '' : up ? `<g clip-path="url(#av-hood-clip)">${top}</g>` : top;
+  s += hairTop + hoodFront + fall + faceSvg + fh + brow + eyeSvg + mouthPart + accSvg + headset;
   return `<svg class="av ${extra}" style="--av:${kc}" width="${size}" height="${size}" viewBox="0 -8 100 108" aria-hidden="true">${s}</svg>`;
 }
