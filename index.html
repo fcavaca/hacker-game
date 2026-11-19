@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#06070d">
+  <meta name="theme-color" content="#0b0b0d">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
   <!-- Loading screen: shows instantly while fonts, code and the network load -->
@@ -31,6 +31,8 @@
     </div>
     <div class="boot-bar"><div></div></div>
   </div>
+  <!-- the intro plays only the first time the game opens (not when you go back to the menu) -->
+  <script>try { if (sessionStorage.getItem('booted')) document.getElementById('boot').remove(); } catch (e) {}</script>
   <div class="bg-grid"></div>
   <div id="app"></div>
   <div id="overlay"></div>
@@ -40,9 +42,9 @@
   <!-- QR code maker (the QR reader loads only when someone first scans) -->
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <!-- download every code file at the same time instead of one after another -->
-  <link rel="modulepreload" href="net.js?v=15"><link rel="modulepreload" href="engine.js?v=15"><link rel="modulepreload" href="games.js?v=15">
-  <link rel="modulepreload" href="config.js?v=15"><link rel="modulepreload" href="icons.js?v=15"><link rel="modulepreload" href="avatar.js?v=15">
-  <link rel="modulepreload" href="profile.js?v=15"><link rel="modulepreload" href="music.js?v=15"><link rel="modulepreload" href="firebase-config.js?v=15">
-  <script type="module" src="main.js?v=15"></script>
+  <link rel="modulepreload" href="net.js?v=16"><link rel="modulepreload" href="engine.js?v=16"><link rel="modulepreload" href="games.js?v=16">
+  <link rel="modulepreload" href="config.js?v=16"><link rel="modulepreload" href="icons.js?v=16"><link rel="modulepreload" href="avatar.js?v=16">
+  <link rel="modulepreload" href="profile.js?v=16"><link rel="modulepreload" href="music.js?v=16"><link rel="modulepreload" href="firebase-config.js?v=16">
+  <script type="module" src="main.js?v=16"></script>
 </body>
 </html>

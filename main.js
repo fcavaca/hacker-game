@@ -1,13 +1,13 @@
 // SCREENS — what each player sees. Every phone runs this file. The host's phone also runs the engine.
 
-import { connect, ONLINE } from './net.js?v=15';
-import { createEngine } from './engine.js?v=15';
-import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=15';
-import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=15';
-import { icon } from './icons.js?v=15';
-import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=15';
-import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=15';
-import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=15';
+import { connect, ONLINE } from './net.js?v=16';
+import { createEngine } from './engine.js?v=16';
+import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=16';
+import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=16';
+import { icon } from './icons.js?v=16';
+import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=16';
+import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=16';
+import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=16';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -259,7 +259,7 @@ function toast(text, kind = 'info') {
 }
 
 function confetti(host, n = 60) {
-  const cols = ['#00ffa3', '#00d2ff', '#ff3dce', '#ffd23f', '#8a5cff', '#fff'];
+  const cols = ['#00e08a', '#ffd23f', '#ff4d4d', '#ffb020', '#fff'];
   for (let i = 0; i < n; i++) {
     const c = document.createElement('i');
     c.className = 'confetti';
@@ -1089,7 +1089,7 @@ function renderPlaying() {
     if (blocked) v += `<div class="card cool"><div class="card-ic">${icon('clock')}</div><div><b>Cooldown <span data-until="${blocked}">${fmt(blocked - t)}</span></b><p class="hint">Walk to your next game's location!</p></div></div>`;
     v += `<h3>${icon('activity')} Live feed</h3>${newsList(S.news.slice(-8).reverse())}`;
   } else if (tab === 'games') {
-    v += `<h2 class="tab-title">${icon('grid')} Your games</h2><p class="hint">Walk to the place on each game, then play it there. Yellow ones need other players.</p>`;
+    v += `<h2 class="tab-title">${icon('grid')} Your games</h2><p class="hint">Walk to the place on each game, then play it there. The ones marked "with players" need other people.</p>`;
     if (blocked) v += `<div class="card cool"><div class="card-ic">${icon('clock')}</div><div><b>Next game in <span data-until="${blocked}">${fmt(blocked - t)}</span></b><p class="hint">Use the time to move!</p></div></div>`;
     if (duelActive) v += '<div class="card"><p class="hint">You\'re in a duel — finish it first.</p></div>';
     v += `<div class="games">${p.games.map((g, i) => {
@@ -1343,6 +1343,7 @@ for (let i = 0; i < 18; i++) {
 function hideBoot() {
   const b = $('#boot');
   if (!b) return;
+  sessionStorage.setItem('booted', '1');
   // 🥚 playing between 2 and 5 at night? the loading screen notices
   const hr = new Date().getHours();
   if (hr >= 2 && hr < 5) $('.boot-term', b)?.insertAdjacentHTML('beforeend', '<p style="--d:2.1s">&gt; why are you awake at 3 AM?… <b>SUS</b></p>');
