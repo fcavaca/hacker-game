@@ -1196,17 +1196,6 @@ body.bsod #app { animation: bsod .9s steps(1); }
 .arc-stats b { color:var(--yellow); }
 .arc-filter { margin:10px 0; }
 .arc-filter button { font-size:.8rem; }
-.arc-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; width:100%; padding-bottom:24px; }
-.arc-card { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; padding:12px; border-radius:12px; background:var(--card, #16161a); border:1.5px solid rgba(255,255,255,.1); color:inherit; font:inherit; cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,.5); transition:transform .1s; }
-.arc-card:active { transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.5); }
-.arc-card.won { border-color:rgba(0,224,138,.45); }
-.arc-card .arc-ic { width:34px; height:34px; display:grid; place-items:center; border-radius:9px; background:rgba(255,210,63,.13); color:var(--yellow); }
-.arc-card .arc-ic svg { width:20px; height:20px; }
-.arc-card b { font-size:.95rem; line-height:1.15; }
-.arc-card small { font-size:.75rem; opacity:.65; line-height:1.25; }
-.arc-card em { font-style:normal; font-size:.72rem; margin-top:auto; padding-top:4px; color:var(--yellow); font-weight:700; }
-.arc-card .arc-sens { position:absolute; top:10px; right:10px; opacity:.45; }
-.arc-card .arc-sens svg { width:14px; height:14px; }
 .arc-mine { color:var(--yellow); font-weight:700; }
 .arc-res { position:relative; overflow:hidden; text-align:center; padding:18px 10px 8px; border-radius:14px; margin-bottom:12px; }
 .arc-res.good { background:rgba(0,224,138,.1); }
@@ -1215,3 +1204,27 @@ body.bsod #app { animation: bsod .9s steps(1); }
 .arc-res.good > b { color:var(--green); }
 .arc-res.bad > b { color:var(--red); }
 #overlay.arcade-res .btn, #overlay.arcade-intro .btn { width:100%; margin-top:8px; }
+/* ---------- 🎮 game cards: little "cartridges" with a coloured label (in-game list, Arcade, Play for fun) ---------- */
+.games .gcard { padding: 0; gap: 0; min-height: 0; border-radius: 14px; background: #141418; border: 2px solid #000; box-shadow: 0 4px 0 #000, 0 0 0 1px rgba(255,255,255,.07) inset; overflow: hidden; }
+.games .gcard:not(:disabled):active { transform: translateY(3px); box-shadow: 0 1px 0 #000; }
+.g-art { position: relative; display: grid; place-items: center; height: 76px; background: var(--acc);
+  background-image: repeating-linear-gradient(-45deg, rgba(0,0,0,.13) 0 8px, transparent 8px 16px), radial-gradient(circle at 50% 120%, rgba(0,0,0,.35), transparent 70%);
+  border-bottom: 2px solid #000; }
+.games .gcard .g-ic { width: 48px; height: 48px; margin: 0; border-radius: 50%; background: #0b0b0d; color: var(--acc); border: 2px solid rgba(255,255,255,.15); box-shadow: 0 3px 0 rgba(0,0,0,.45); }
+.games .gcard .g-ic .ic { width: 24px; height: 24px; }
+.games .gcard:not(:disabled):hover .g-ic, .games .gcard:not(:disabled):focus-visible .g-ic { transform: rotate(-8deg) scale(1.06); }
+.g-kind { position: absolute; left: 7px; bottom: 6px; font: 800 9.5px var(--mono); letter-spacing: .08em; font-style: normal; padding: 2px 6px; border-radius: 5px; background: #0b0b0d; color: var(--acc); }
+.g-num { position: absolute; right: 8px; top: 6px; font: 800 12px var(--mono); font-style: normal; color: rgba(0,0,0,.55); }
+.g-txt { display: flex; flex-direction: column; gap: 3px; padding: 9px 11px 11px; flex: 1; }
+.games .gcard b { font-size: 16px; }
+.games .gcard small { opacity: .7; font-size: 12.5px; }
+.games .gcard .g-zone { color: var(--acc); }
+.g-new { font-style: normal; padding: 1px 6px; border-radius: 5px; background: var(--acc); color: #0b0b0d; }
+/* done: the label goes grey and gets a stamp */
+.games .gcard.done { opacity: .7; border-color: #000; }
+.games .gcard.done { --acc: #5a5a63 !important; } /* beats the card's own colour */
+.games .gcard.done .g-art::after { content: 'DONE'; position: absolute; transform: rotate(-12deg); font: 800 22px var(--mono); letter-spacing: .1em; color: var(--green); border: 3px solid var(--green); border-radius: 8px; padding: 0 8px; background: rgba(0,0,0,.6); }
+.games .gcard.done .g-zone { color: var(--green); }
+.games .gcard.open { border-color: var(--acc); }
+.games .gcard.won .g-txt b::after { content: ' ✓'; color: var(--green); }
+.arc-games { padding-bottom: 24px; }

@@ -1,13 +1,13 @@
 // SCREENS — what each player sees. Every phone runs this file. The host's phone also runs the engine.
 
-import { connect, ONLINE } from './net.js?v=21';
-import { createEngine } from './engine.js?v=21';
-import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=21';
-import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES, SOLO_IDS, SOCIAL_IDS, SENSOR_IDS } from './config.js?v=21';
-import { icon } from './icons.js?v=21';
-import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=21';
-import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=21';
-import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=21';
+import { connect, ONLINE } from './net.js?v=22';
+import { createEngine } from './engine.js?v=22';
+import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=22';
+import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES, SOLO_IDS, SOCIAL_IDS, SENSOR_IDS } from './config.js?v=22';
+import { icon } from './icons.js?v=22';
+import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=22';
+import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=22';
+import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=22';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -829,6 +829,17 @@ function arcadeSave(g, won) {
   return s;
 }
 
+// one pretty "game cartridge" card, used by the in-game list, the Arcade and "Play for fun"
+const G_ACCENTS = ['#ffd23f', '#ff4d4d', '#00e08a', '#ffb020', '#4dc3ff', '#ff6bd6'];
+const accentOf = (id) => G_ACCENTS[[...id].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) % G_ACCENTS.length];
+const kindOf = (id) => SOLO[id]?.social ? 'PEOPLE' : { noise: 'MIC', unmute: 'MIC', quiet: 'MIC', shake: 'MOTION', tilt: 'MOTION', colour: 'CAMERA', disco: 'SOUND' }[id] || 'TAP';
+function gameCard(id, { cls = '', attrs = '', foot = '', sub = null, n = null } = {}) {
+  const G = SOLO[id];
+  return `<button class="gcard ${G.social ? 'social' : ''} ${cls}" style="--acc:${accentOf(id)}" ${attrs}>
+    <span class="g-art"><span class="g-ic">${icon(G.ic)}</span><i class="g-kind">${kindOf(id)}</i>${n != null ? `<i class="g-num">#${String(n).padStart(2, '0')}</i>` : ''}</span>
+    <span class="g-txt"><b>${esc(G.name)}</b><small>${esc(sub ?? G.tag)}</small>${foot ? `<span class="g-zone">${foot}</span>` : ''}</span></button>`;
+}
+
 function renderArcade() {
   const st = arcadeStats(), f = ui.arcFilter || 'all';
   const list = ARCADE_IDS.filter((g) => f === 'all' || (f === 'nosens' ? !SENSOR_IDS.includes(g) : SENSOR_IDS.includes(g)));
@@ -839,7 +850,7 @@ function renderArcade() {
     <div class="arc-stats"><span><b>${totalW}</b> wins</span><span><b>${tried}/${ARCADE_IDS.length}</b> games tried</span></div>
     <button class="btn big hot" id="arcRand">${icon('dice')} RANDOM GAME</button>
     <div class="seg arc-filter">${[['all', 'All'], ['nosens', 'Just tapping'], ['sens', 'Mic / motion / camera']].map(([k, t]) => `<button class="${k === f ? 'on' : ''}" data-f="${k}">${t}</button>`).join('')}</div>
-    <div class="arc-grid">${list.map((g) => { const G = SOLO[g], s = st[g]; return `<button class="arc-card ${s?.w ? 'won' : ''}" data-g="${g}"><span class="arc-ic">${icon(G.ic)}</span><b>${esc(G.name)}</b><small>${esc(G.tag)}</small><em>${s ? `🏆 ${s.w} · 🔥 best ${s.best}` : 'NEW'}</em>${SENSOR_IDS.includes(g) ? `<i class="arc-sens">${icon('mic')}</i>` : ''}</button>`; }).join('')}</div>
+    <div class="games arc-games">${list.map((g) => { const s = st[g]; return gameCard(g, { cls: `arc-card ${s?.w ? 'won' : ''}`, attrs: `data-g="${g}"`, foot: s ? `🏆 ${s.w} · 🔥 best ${s.best}` : '<i class="g-new">NEW</i>' }); }).join('')}</div>
   </div>`;
   $('#arcBack').onclick = () => { ui.home = 'main'; renderHome(); };
   $$('.arc-filter button').forEach((b) => b.onclick = () => { ui.arcFilter = b.dataset.f; renderArcade(); });
@@ -1160,7 +1171,8 @@ function renderPlaying() {
     if (duelActive) v += '<div class="card"><p class="hint">You\'re in a duel — finish it first.</p></div>';
     v += `<div class="games">${p.games.map((g, i) => {
       const G = SOLO[g.t]; const open = p.task?.i === i;
-      return `<button class="gcard ${g.done ? 'done' : ''} ${G.social ? 'social' : ''} ${open ? 'open' : ''}" data-g="${i}" ${g.done || (blocked && !open) || duelActive ? 'disabled' : ''}><span class="g-ic">${icon(g.done ? 'check' : G.ic)}</span><b>${G.name}</b><small>${open ? 'IN PROGRESS — tap to open' : G.tag}</small><span class="g-zone">${G.social ? `${icon('users')}with players` : `${icon('pin')}${esc(g.z || '')}`}</span></button>`;
+      return gameCard(g.t, { cls: `${g.done ? 'done' : ''} ${open ? 'open' : ''}`, attrs: `data-g="${i}" ${g.done || (blocked && !open) || duelActive ? 'disabled' : ''}`, n: i + 1,
+        sub: open ? 'IN PROGRESS — tap to open' : null, foot: g.done ? `${icon('check')}DONE` : G.social ? `${icon('users')}with players` : `${icon('pin')}${esc(g.z || '')}` });
     }).join('')}</div>`;
   } else if (tab === 'duel') {
     v += `<h2 class="tab-title">${icon('swords')} Duels</h2>`;
@@ -1240,7 +1252,7 @@ function renderOut() {
         <small>${x.done} games · ${x.wins || 0}W / ${x.lost || 0}L duels · ${x.hacks || 0} hacks · ${x.votes || 0} votes</small></div></div>`;
     }).join('')}</div>`;
   } else {
-    v += `<h3>${icon('grid')} Play for fun</h3><div class="games">${Object.entries(SOLO).filter(([, G]) => !G.social).map(([id, G]) => `<button class="gcard" data-p="${id}"><span class="g-ic">${icon(G.ic)}</span><b>${G.name}</b><small>${G.tag}</small></button>`).join('')}</div>`;
+    v += `<h3>${icon('grid')} Play for fun</h3><div class="games">${ARCADE_IDS.map((id) => gameCard(id, { attrs: `data-p="${id}"` })).join('')}</div>`;
   }
   app.innerHTML = `${topbar()}<main class="view ${enterCls('out-' + ui.outTab + waiting)}">${v}</main>${tabbar([['news', 'news', 'News'], ['players', 'users', 'Players'], ['games', 'grid', 'Games']], ui.outTab)}`;
   $$('.tab').forEach((b) => b.onclick = () => { ui.outTab = b.dataset.tab; render(); });
