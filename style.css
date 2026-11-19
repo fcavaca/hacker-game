@@ -1188,3 +1188,30 @@ body.bsod #app { animation: bsod .9s steps(1); }
 
 /* the loading bar follows real loading (index.html sets the width) */
 .boot-bar div { animation: none !important; width: 4%; transition: width .35s ease-out; }
+/* ---------- 🕹️ ARCADE (solo practice) ---------- */
+.arcade-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; border:2px solid var(--yellow); color:var(--yellow); background:rgba(255,210,63,.07); font-weight:700; letter-spacing:.04em; }
+.arcade-btn small { font-weight:500; opacity:.7; letter-spacing:0; text-transform:none; }
+.arcade .av-top span { width:60px; }
+.arc-stats { display:flex; justify-content:center; gap:14px; flex-wrap:wrap; font-size:.85rem; opacity:.85; margin:4px 0 10px; }
+.arc-stats b { color:var(--yellow); }
+.arc-filter { margin:10px 0; }
+.arc-filter button { font-size:.8rem; }
+.arc-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; width:100%; padding-bottom:24px; }
+.arc-card { position:relative; display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; padding:12px; border-radius:12px; background:var(--card, #16161a); border:1.5px solid rgba(255,255,255,.1); color:inherit; font:inherit; cursor:pointer; box-shadow:0 3px 0 rgba(0,0,0,.5); transition:transform .1s; }
+.arc-card:active { transform:translateY(2px); box-shadow:0 1px 0 rgba(0,0,0,.5); }
+.arc-card.won { border-color:rgba(0,224,138,.45); }
+.arc-card .arc-ic { width:34px; height:34px; display:grid; place-items:center; border-radius:9px; background:rgba(255,210,63,.13); color:var(--yellow); }
+.arc-card .arc-ic svg { width:20px; height:20px; }
+.arc-card b { font-size:.95rem; line-height:1.15; }
+.arc-card small { font-size:.75rem; opacity:.65; line-height:1.25; }
+.arc-card em { font-style:normal; font-size:.72rem; margin-top:auto; padding-top:4px; color:var(--yellow); font-weight:700; }
+.arc-card .arc-sens { position:absolute; top:10px; right:10px; opacity:.45; }
+.arc-card .arc-sens svg { width:14px; height:14px; }
+.arc-mine { color:var(--yellow); font-weight:700; }
+.arc-res { position:relative; overflow:hidden; text-align:center; padding:18px 10px 8px; border-radius:14px; margin-bottom:12px; }
+.arc-res.good { background:rgba(0,224,138,.1); }
+.arc-res.bad { background:rgba(255,45,85,.1); }
+.arc-res > b { display:block; font-size:2rem; letter-spacing:.05em; }
+.arc-res.good > b { color:var(--green); }
+.arc-res.bad > b { color:var(--red); }
+#overlay.arcade-res .btn, #overlay.arcade-intro .btn { width:100%; margin-top:8px; }

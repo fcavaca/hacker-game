@@ -1,13 +1,13 @@
 // SCREENS — what each player sees. Every phone runs this file. The host's phone also runs the engine.
 
-import { connect, ONLINE } from './net.js?v=20';
-import { createEngine } from './engine.js?v=20';
-import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=20';
-import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=20';
-import { icon } from './icons.js?v=20';
-import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=20';
-import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=20';
-import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=20';
+import { connect, ONLINE } from './net.js?v=21';
+import { createEngine } from './engine.js?v=21';
+import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=21';
+import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES, SOLO_IDS, SOCIAL_IDS, SENSOR_IDS } from './config.js?v=21';
+import { icon } from './icons.js?v=21';
+import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=21';
+import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=21';
+import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=21';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -819,8 +819,72 @@ function renderAvatarScreen() {
   };
 }
 
+// ---------- 🕹️ ARCADE: play any solo game alone, just for practice / fun (no room needed, no XP) ----------
+const ARCADE_IDS = SOLO_IDS.filter((g) => !SOCIAL_IDS.includes(g) && SOLO[g]?.run);
+const arcadeStats = () => { try { return JSON.parse(localStorage.getItem('ti-arcade') || '{}'); } catch { return {}; } };
+function arcadeSave(g, won) {
+  const st = arcadeStats(), s = st[g] || { w: 0, p: 0, streak: 0, best: 0 };
+  s.p++; if (won) { s.w++; s.streak++; s.best = Math.max(s.best, s.streak); } else s.streak = 0;
+  st[g] = s; try { localStorage.setItem('ti-arcade', JSON.stringify(st)); } catch { /* private mode */ }
+  return s;
+}
+
+function renderArcade() {
+  const st = arcadeStats(), f = ui.arcFilter || 'all';
+  const list = ARCADE_IDS.filter((g) => f === 'all' || (f === 'nosens' ? !SENSOR_IDS.includes(g) : SENSOR_IDS.includes(g)));
+  const totalW = Object.values(st).reduce((a, s) => a + s.w, 0), tried = ARCADE_IDS.filter((g) => st[g]?.p).length;
+  app.innerHTML = `<div class="screen home arcade ${enterCls('arcade')}">
+    <div class="av-top"><button class="back" id="arcBack">${icon('left')} Back</button><b>ARCADE</b><span></span></div>
+    <p class="hint center">Every solo game, no friends needed. Practice for the real thing or just kill time.</p>
+    <div class="arc-stats"><span><b>${totalW}</b> wins</span><span><b>${tried}/${ARCADE_IDS.length}</b> games tried</span></div>
+    <button class="btn big hot" id="arcRand">${icon('dice')} RANDOM GAME</button>
+    <div class="seg arc-filter">${[['all', 'All'], ['nosens', 'Just tapping'], ['sens', 'Mic / motion / camera']].map(([k, t]) => `<button class="${k === f ? 'on' : ''}" data-f="${k}">${t}</button>`).join('')}</div>
+    <div class="arc-grid">${list.map((g) => { const G = SOLO[g], s = st[g]; return `<button class="arc-card ${s?.w ? 'won' : ''}" data-g="${g}"><span class="arc-ic">${icon(G.ic)}</span><b>${esc(G.name)}</b><small>${esc(G.tag)}</small><em>${s ? `🏆 ${s.w} · 🔥 best ${s.best}` : 'NEW'}</em>${SENSOR_IDS.includes(g) ? `<i class="arc-sens">${icon('mic')}</i>` : ''}</button>`; }).join('')}</div>
+  </div>`;
+  $('#arcBack').onclick = () => { ui.home = 'main'; renderHome(); };
+  $$('.arc-filter button').forEach((b) => b.onclick = () => { ui.arcFilter = b.dataset.f; renderArcade(); });
+  $$('.arc-card').forEach((b) => b.onclick = () => arcadeIntro(b.dataset.g));
+  $('#arcRand').onclick = () => arcadeIntro(pickOne(list.length ? list : ARCADE_IDS));
+}
+
+// "how to play" card first, so nobody starts a timer without knowing the rules
+function arcadeIntro(g) {
+  const G = SOLO[g], s = arcadeStats()[g];
+  sfx('whoosh');
+  const body = openOverlay('arcade-intro', `${icon(G.ic)} ${G.name}`, { closeLabel: 'Back' });
+  body.innerHTML = `<div class="task-hero">${icon(G.ic)}</div><p class="dare-text">${esc(G.tag)}</p><p class="hint center">${HOW[g] || ''}</p>
+    ${SENSOR_IDS.includes(g) ? `<p class="hint center">${icon('mic')} This one uses your phone's mic, motion or camera — allow it when asked.</p>` : ''}
+    ${s ? `<p class="center arc-mine">🏆 ${s.w} wins of ${s.p} · 🔥 best streak ${s.best}</p>` : ''}
+    <button class="btn big hot" id="arcPlay">${icon('play')} PLAY</button>`;
+  $('#arcPlay').onclick = () => arcadePlay(g);
+}
+
+function arcadePlay(g) {
+  const G = SOLO[g];
+  sfx('whoosh');
+  const body = openOverlay('game', `${icon(G.ic)} ${G.name}`, { closeLabel: 'Give up', onClose: () => arcadeResult(g, false, true) });
+  const done = once((res) => { closeOverlay(); arcadeResult(g, res === true); });
+  ui.cleanup = G.run(body, done) || null;
+}
+
+function arcadeResult(g, won, gaveUp = false) {
+  const s = arcadeSave(g, won), G = SOLO[g];
+  sfx(won ? 'win' : 'lose');
+  const body = openOverlay('arcade-res', `${icon(G.ic)} ${G.name}`);
+  body.innerHTML = `<div class="arc-res ${won ? 'good' : 'bad'}"><b>${won ? 'YOU WON' : gaveUp ? 'RAGE QUIT' : 'YOU LOST'}</b><p>${won ? pickOne(WIN_LINES) : gaveUp ? 'Giving up is also a strategy. A bad one.' : pickOne(FAIL_LINES)}</p>
+    <div class="arc-stats"><span>🔥 streak <b>${s.streak}</b></span><span>🏆 best <b>${s.best}</b></span><span><b>${s.w}/${s.p}</b> won</span></div></div>
+    <button class="btn big hot" id="arcAgain">${icon('play')} PLAY AGAIN</button>
+    <button class="btn" id="arcNext">${icon('dice')} Random game</button>
+    <button class="btn ghost" id="arcList">${icon('left')} All games</button>`;
+  if (won && s.streak >= 3) confetti($('.arc-res', body), 50); // 3 wins in a row = party
+  $('#arcAgain').onclick = () => arcadePlay(g);
+  $('#arcNext').onclick = () => arcadeIntro(pickOne(ARCADE_IDS.filter((x) => x !== g)));
+  $('#arcList').onclick = () => { closeOverlay(); renderArcade(); };
+}
+
 function renderHome() {
   if (ui.home === 'avatar') return renderAvatarScreen();
+  if (ui.home === 'arcade') return renderArcade();
   if (ui.home === 'join') {
     app.innerHTML = `<div class="screen home ${enterCls('join')}">
       <button class="back" id="back">${icon('left')} Back</button>
@@ -848,6 +912,7 @@ function renderHome() {
       <button class="choice host" id="host"><span>${icon('monitor')}</span><b>HOST</b><small>Create a room</small></button>
       <button class="choice join" id="toJoin"><span>${icon('login')}</span><b>JOIN</b><small>Enter a code</small></button>
     </div>
+    <button class="btn arcade-btn" id="arcBtn">${icon('play')} ARCADE <small>play the mini-games solo</small></button>
     <button class="btn ghost" id="howBtn">${icon('news')} How to play</button>
     ${ui.error ? `<p class="err">${esc(ui.error)}</p>` : ''}
     <p class="mode ${ONLINE ? 'on' : ''}">${ONLINE ? '● ONLINE' : '● LOCAL TEST MODE'}</p>
@@ -861,6 +926,7 @@ function renderHome() {
   $('#host').onclick = createRoom;
   $('#toJoin').onclick = () => { if (!saveMe()) return; ui.home = 'join'; renderHome(); };
   $('#howBtn').onclick = howToPlay;
+  $('#arcBtn').onclick = () => { keepName(); ui.home = 'arcade'; renderHome(); };
 }
 
 function fmtSetting(s, v) {
