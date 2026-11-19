@@ -1,13 +1,13 @@
 // SCREENS — what each player sees. Every phone runs this file. The host's phone also runs the engine.
 
-import { connect, ONLINE } from './net.js?v=13';
-import { createEngine } from './engine.js?v=13';
-import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=13';
-import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=13';
-import { icon } from './icons.js?v=13';
-import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=13';
-import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=13';
-import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=13';
+import { connect, ONLINE } from './net.js?v=15';
+import { createEngine } from './engine.js?v=15';
+import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=15';
+import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=15';
+import { icon } from './icons.js?v=15';
+import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=15';
+import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=15';
+import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=15';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -115,6 +115,13 @@ function onPhaseChange(prev) {
   }
 }
 
+// the game logo: "TrustIssues" + ".exe" that slams down and cracks the ground (still = already cracked, no animation)
+function tiLogo(still = false, tag = 'has stopped working.') {
+  const rocks = [[-90, -70, 200], [85, -80, -160], [-130, -20, 90], [125, -30, -240], [-50, -110, 300], [40, -120, -120], [-160, 10, 60], [160, 5, -90]]
+    .map(([x, y, r]) => `<b class="ti-rock" style="--x:${x}px;--y:${y}px;--r:${r}deg"></b>`).join('');
+  return `<div class="ti-logo ${still ? 'still' : ''}"><span class="ti-name">TrustIssues</span><span class="ti-exe">.exe<svg class="ti-cracks" viewBox="-150 -60 300 120" aria-hidden="true"><path d="M0 0L-28 7L-52 3L-88 17L-145 12"/><path d="M0 0L24 9L58 5L96 21L148 16"/><path d="M0 0L-11 24L-29 39L-36 60"/><path d="M0 0L13 21L9 39L27 58"/><path d="M0 0L-44 -7L-82 -3"/><path d="M0 0L41 -9L72 -5"/><path d="M-52 3L-60 27"/><path d="M58 5L69 31"/></svg><i class="ti-flash"></i>${rocks}</span><div class="ti-ground"></div><small class="ti-tag">${esc(tag)}</small></div>`;
+}
+
 // voted out: the player gets up from their computer and walks away; the screen says DISCONNECTED
 function leaveScene(k) {
   return `<div class="leave-scene"><div class="ls-person">${av(k, 92)}</div><div class="ls-chair"></div><div class="ls-desk"></div><div class="ls-monitor"><div class="ls-screen"><span class="on">ONLINE</span><span class="off">DISCONNECTED</span></div><i></i></div><div class="ls-bye">👋</div></div>`;
@@ -173,7 +180,9 @@ async function joinRoom() {
   app.innerHTML = '<div class="screen center loading">Connecting…</div>';
   net = await connect(room, { isHost: false, onState: receive });
   if (!(await net.exists())) {
-    ui.error = `Room ${code} doesn't exist. Check the code!`;
+    // 🥚 a few joke codes
+    ui.error = { HACK: 'Nice try. You can\'t hack the join screen. 🤨', NOOB: 'Room NOOB is just you. Forever. 🫠', OHIO: 'Room OHIO exists… in another dimension. 🌽', SIGM: 'Sigmas don\'t join rooms. Rooms join them. 🗿' }[code]
+      || `Room ${code} doesn't exist. Check the code!`;
     net.close?.(); net = null; room = null;
     return render();
   }
@@ -402,7 +411,7 @@ function showRole() {
   // intro: shutters slam shut, the game name glitches in, then they open on your role
   const intro = document.createElement('div');
   intro.className = 'shutter';
-  intro.innerHTML = '<div class="sh-top"></div><div class="sh-bot"></div><div class="sh-logo"><span class="glitch" data-t="HACKER">HACKER</span><small>assigning your role…</small></div>';
+  intro.innerHTML = `<div class="sh-top"></div><div class="sh-bot"></div><div class="sh-logo">${tiLogo(false, 'assigning your role…')}</div>`;
   ov.appendChild(intro);
   sfx('whoosh'); setTimeout(() => sfx('reveal'), 900); setTimeout(() => sfx('whoosh'), 2100);
   setTimeout(() => intro.classList.add('open'), 2100);
@@ -747,6 +756,39 @@ function levelChip() {
   return `<button class="acct-chip" id="acctBtn"><span class="lv">Lv ${lp.level}</span><span class="mini-xp"><i style="width:${lp.pct}%"></i></span>${esc(profile.name)}</button>`;
 }
 
+// ---------- 🥚 easter eggs on the home screen ----------
+function homeEasterEggs() {
+  // 1) tap the logo 7 times: the program "crashes"
+  let taps = 0, tapT = 0;
+  $('.home .ti-logo')?.addEventListener('click', () => {
+    taps = Date.now() - tapT < 800 ? taps + 1 : 1; tapT = Date.now();
+    if (taps >= 7) { taps = 0; fakeCrash(); }
+  });
+  // 2) hold your character for 1.5 s: it gets dizzy
+  const avEl = $('#avTap'); let holdT = null;
+  avEl?.addEventListener('pointerdown', () => { holdT = setTimeout(() => { ui.heldAv = true; avEl.classList.remove('dizzy'); void avEl.offsetWidth; avEl.classList.add('dizzy'); sfx('whoosh'); toast(pickOne(['😵 Stop touching me. I have trust issues.', '😵‍💫 Personal space, please. I don\'t know you.', '🫨 Bro is NOT a fidget toy.'])); }, 1500); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => avEl?.addEventListener(ev, () => clearTimeout(holdT)));
+  // 3) secret nicknames
+  const NAMES = [[/^(67|6\s?7|six\s?seven)$/i, '6️⃣7️⃣ SIX SEVEN 🤷'], [/tung\s?tung/i, '🪵 TUNG TUNG TUNG SAHUR. He knows where you live.'],
+    [/skibidi/i, '🚽 Skibidi detected. Aura −1000.'], [/^(admin|hacker|root)$/i, '🤨 Bold name for someone with trust issues.'], [/^(mom|mum|mama)$/i, '👩 "Did you eat?" — Mom, probably']];
+  let lastEgg = '';
+  $('#name')?.addEventListener('input', (e) => {
+    const v = e.target.value.trim(), hit = NAMES.find(([re]) => re.test(v));
+    if (hit && lastEgg !== hit[1]) { lastEgg = hit[1]; toast(hit[1]); if (hit[1].startsWith('6️⃣')) { const a = $('#avTap'); a.classList.remove('sixseven'); void a.offsetWidth; a.classList.add('sixseven'); } }
+    if (!hit) lastEgg = '';
+  });
+}
+
+// fake "has stopped working" window
+function fakeCrash() {
+  sfx('lose');
+  modal.className = 'show';
+  modal.innerHTML = `<div class="crash"><div class="crash-bar"><span>TrustIssues.exe</span><b>✕</b></div><div class="crash-body"><div class="crash-x">✕</div><div><p><b>TrustIssues.exe has stopped working</b></p><p>Windows is looking for a solution to the problem…</p><p class="hint">Just kidding. There is no solution. Your friends are still lying.</p></div></div><div class="crash-btns"><button class="btn small" id="crWait">Wait for it to respond</button><button class="btn small" id="crClose">Close program</button></div></div>`;
+  const close = () => { modal.className = ''; modal.innerHTML = ''; };
+  $('#crWait').onclick = () => { $('.crash-body p.hint').textContent = '⏳ Still waiting… still not trusting anyone.'; setTimeout(close, 1600); };
+  $('#crClose').onclick = () => { close(); document.body.classList.add('bsod'); setTimeout(() => document.body.classList.remove('bsod'), 900); };
+}
+
 // character customisation: its own screen; changes only stick when you press SAVE
 function renderAvatarScreen() {
   const d = ui.avDraft;
@@ -798,7 +840,7 @@ function renderHome() {
   }
   app.innerHTML = `<div class="screen home ${enterCls('home')}">
     <div class="home-top">${levelChip()}<button class="gear" id="prefsBtn">${icon('tool')}</button></div>
-    <div class="logo"><span class="glitch" data-t="HACKER">HACKER</span><small>THE PARTY GAME</small></div>
+    ${tiLogo(true)}
     <div class="home-av" id="avTap">${avatarSVG(me.av, 150, 'float')}<button class="edit-av">${icon('edit')}</button></div>
     <p class="hint center tap-hint">Tap your character to customise it</p>
     <input id="name" class="inp name" maxlength="16" placeholder="Your gamer tag" value="${esc(me.name)}" autocomplete="off">
@@ -812,7 +854,8 @@ function renderHome() {
   </div>`;
   ui.error = '';
   const keepName = () => { me.name = $('#name').value; };
-  $('#avTap').onclick = () => { keepName(); ui.avDraft = { ...me.av }; ui.home = 'avatar'; renderHome(); };
+  $('#avTap').onclick = () => { if (ui.heldAv) { ui.heldAv = false; return; } keepName(); ui.avDraft = { ...me.av }; ui.home = 'avatar'; renderHome(); };
+  homeEasterEggs();
   $('#acctBtn').onclick = () => { keepName(); openProfile(); };
   $('#prefsBtn').onclick = openPrefs;
   $('#host').onclick = createRoom;
@@ -1300,8 +1343,11 @@ for (let i = 0; i < 18; i++) {
 function hideBoot() {
   const b = $('#boot');
   if (!b) return;
+  // 🥚 playing between 2 and 5 at night? the loading screen notices
+  const hr = new Date().getHours();
+  if (hr >= 2 && hr < 5) $('.boot-term', b)?.insertAdjacentHTML('beforeend', '<p style="--d:2.1s">&gt; why are you awake at 3 AM?… <b>SUS</b></p>');
   // counted from when the page started opening, so a slow download doesn't add extra waiting
-  const wait = Math.max(0, 1400 - performance.now());
+  const wait = Math.max(0, 2500 - performance.now()); // long enough to see the .exe slam
   setTimeout(() => { b.classList.add('gone'); setTimeout(() => b.remove(), 700); }, wait);
 }
 

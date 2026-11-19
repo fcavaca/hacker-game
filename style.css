@@ -16,7 +16,9 @@
   --head: 'Chakra Petch', 'Rajdhani', system-ui, sans-serif;
   --body: 'Rajdhani', system-ui, -apple-system, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
-  --hot: linear-gradient(135deg, #ff3dce 0%, #8a5cff 55%, #00d2ff 100%);
+  /* the gradient is only for the main buttons; everything else uses the solid colour */
+  --hot-grad: linear-gradient(135deg, #ff3dce 0%, #8a5cff 55%, #00d2ff 100%);
+  --hot: #8a5cff;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
 }
@@ -516,11 +518,11 @@ body::before { content: ''; position: fixed; left: 0; right: 0; top: 0; height: 
 
 /* =================== v0.5 additions =================== */
 /* PLACE THEMES — the whole app changes mood with the place */
-body[data-place="dorm"] { --pink: #ff7ab6; --purple: #ff8a3d; --cyan: #ffd23f; --hot: linear-gradient(135deg, #ff5f6d 0%, #ff8a3d 55%, #ffd23f 100%);
+body[data-place="dorm"] { --pink: #ff7ab6; --purple: #ff8a3d; --cyan: #ffd23f; --hot: #ff8a3d; --hot-grad: linear-gradient(135deg, #ff5f6d 0%, #ff8a3d 55%, #ffd23f 100%);
   background: radial-gradient(1200px 600px at 10% -10%, rgba(255,138,61,.28), transparent 60%), radial-gradient(900px 500px at 110% 20%, rgba(255,210,63,.16), transparent 60%), radial-gradient(800px 600px at 50% 120%, rgba(255,95,109,.2), transparent 60%), #0d0806; }
-body[data-place="university"] { --pink: #5aa9ff; --purple: #3d5afe; --cyan: #7ee0ff; --hot: linear-gradient(135deg, #3d5afe 0%, #2f80ed 55%, #7ee0ff 100%);
+body[data-place="university"] { --pink: #5aa9ff; --purple: #3d5afe; --cyan: #7ee0ff; --hot: #3d5afe; --hot-grad: linear-gradient(135deg, #3d5afe 0%, #2f80ed 55%, #7ee0ff 100%);
   background: radial-gradient(1200px 600px at 10% -10%, rgba(61,90,254,.3), transparent 60%), radial-gradient(900px 500px at 110% 20%, rgba(126,224,255,.16), transparent 60%), radial-gradient(800px 600px at 50% 120%, rgba(47,128,237,.2), transparent 60%), #050814; }
-body[data-place="outside"] { --pink: #7dff4d; --purple: #1fb36b; --cyan: #b7ffde; --hot: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+body[data-place="outside"] { --pink: #7dff4d; --purple: #1fb36b; --cyan: #b7ffde; --hot: #1fb36b; --hot-grad: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
   background: radial-gradient(1200px 600px at 10% -10%, rgba(17,153,142,.3), transparent 60%), radial-gradient(900px 500px at 110% 20%, rgba(56,239,125,.14), transparent 60%), radial-gradient(800px 600px at 50% 120%, rgba(10,60,40,.5), transparent 60%), #030a07; }
 body[data-place="outside"] .bg-grid { background-image: radial-gradient(rgba(255,255,255,.5) 1px, transparent 1.5px); background-size: 46px 46px; opacity: .25; }
 body[data-place="dorm"] .bg-grid { opacity: .15; }
@@ -1079,3 +1081,97 @@ body.quake #app { animation: quake .5s; }
 .judge { text-align: center; }
 .judge small { font: 700 12px var(--mono); letter-spacing: 2px; color: var(--dim); }
 .judge-ch { font: 800 22px var(--head); margin: 8px 0 12px; color: var(--yellow); line-height: 1.25; }
+/* ================= TrustIssues.exe logo ================= */
+.ti-logo { position: relative; display: inline-block; text-align: center; font-family: var(--head); font-weight: 700; font-size: clamp(30px, 10.5vw, 52px); line-height: 1.1; white-space: nowrap; padding-bottom: 14px; --imp: .62s; }
+.ti-name { display: inline-block; color: var(--text); text-shadow: 0 0 18px rgba(255,255,255,.15); animation: ti-in .45s ease-out .05s both; }
+.ti-exe { position: relative; display: inline-block; color: var(--yellow); text-shadow: 0 0 16px rgba(255,210,63,.6), 2px 2px 0 #ff2d55; animation: ti-slam .34s cubic-bezier(.7, 0, 1, .6) calc(var(--imp) - .14s) both; }
+/* the crack lines spread from where .exe lands */
+.ti-cracks { position: absolute; left: 50%; top: 92%; width: 190px; height: 76px; transform: translate(-50%, -50%); overflow: visible; pointer-events: none; }
+.ti-cracks path { fill: none; stroke: #ffe8a3; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 0 4px #ff9d00); stroke-dasharray: 220; stroke-dashoffset: 220; animation: ti-crack .4s ease-out calc(var(--imp) + .02s) forwards; }
+.ti-flash { position: absolute; left: 50%; top: 85%; width: 40px; height: 40px; margin: -20px 0 0 -20px; border-radius: 50%; background: radial-gradient(circle, #fff, rgba(255,210,63,.7) 40%, transparent 70%); opacity: 0; pointer-events: none; animation: ti-flash .5s ease-out var(--imp) both; }
+.ti-rock { position: absolute; left: 50%; top: 85%; width: 7px; height: 7px; background: #8a7a6a; border: 1px solid #3a2f25; opacity: 0; pointer-events: none; animation: ti-rock .75s cubic-bezier(.2, .8, .4, 1) var(--imp) both; }
+.ti-rock:nth-child(odd) { width: 5px; height: 9px; background: var(--yellow); border-color: #a8621f; }
+/* the "ground" the .exe hits */
+.ti-ground { position: absolute; left: -6%; right: -6%; bottom: 4px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35) 20%, rgba(255,255,255,.35) 80%, transparent); animation: ti-ground .5s ease-out var(--imp) both; }
+.ti-tag { display: block; position: absolute; left: 0; right: 0; top: 100%; margin-top: 26px; font: 600 12px var(--mono); letter-spacing: 2px; color: var(--dim); white-space: nowrap; animation: ti-in .4s ease-out calc(var(--imp) + .45s) both; }
+@keyframes ti-in { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } }
+@keyframes ti-slam {
+  0% { opacity: 0; transform: translateY(-240px) scale(3.2) rotate(-8deg); }
+  40% { opacity: 1; transform: translateY(0) scale(1.18, .78) rotate(0); }
+  65% { transform: translateY(-6px) scale(.95, 1.08); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes ti-crack { 70% { stroke-dashoffset: 0; opacity: 1; } 100% { stroke-dashoffset: 0; opacity: .6; } }
+@keyframes ti-flash { 0% { opacity: 0; transform: scale(.2); } 15% { opacity: 1; } 100% { opacity: 0; transform: scale(7); } }
+@keyframes ti-rock { 0% { opacity: 1; transform: translate(0, 0) rotate(0); } 100% { opacity: 0; transform: translate(var(--x), calc(var(--y) + 60px)) rotate(var(--r)); } }
+@keyframes ti-ground { 0% { transform: scaleY(1); } 20% { transform: scaleY(3); background: #ffe8a3; box-shadow: 0 0 14px #ff9d00; } 100% { transform: scaleY(1); } }
+/* the whole screen shakes on impact */
+#boot { animation: ti-quake .45s ease-out .62s; }
+@keyframes ti-quake { 0%, 100% { transform: none; } 15% { transform: translate(-7px, 5px); } 30% { transform: translate(6px, -6px); } 45% { transform: translate(-5px, 3px); } 60% { transform: translate(4px, -2px); } 80% { transform: translate(-2px, 1px); } }
+#boot .boot-logo { animation: none; margin-bottom: 38px; }
+/* still version (home screen): already cracked, no animation */
+.ti-logo.still *, .ti-logo.still { animation: none !important; }
+.ti-logo.still .ti-cracks path { stroke-dashoffset: 0; opacity: .45; filter: none; }
+.ti-logo.still .ti-rock, .ti-logo.still .ti-flash { display: none; }
+.home .ti-logo { margin: 22px 0 38px; }
+.sh-logo .ti-logo { --imp: 1.05s; }
+@media (prefers-reduced-motion: reduce) { .ti-logo * { animation-duration: .01s !important; } }
+/* ================= v1.0 "made by a human" pass =================
+   Same colours, less noise: one gradient (main buttons only), no glow on normal screens,
+   solid cards instead of frosted glass, chunky buttons with a hard shadow like real game buttons.
+   Glow is saved for the big moments (splash screens, hacks, victory). */
+:root { --glass: #121528; --glass2: #1a1e36; --line: #262b4a; --press: rgba(0, 0, 0, .5); }
+body[data-place="dorm"] { --glass: #1a120d; --glass2: #241811; --line: #3a2a1f; }
+body[data-place="university"] { --glass: #0e1426; --glass2: #151d36; --line: #22305a; }
+body[data-place="outside"] { --glass: #0b1712; --glass2: #10211a; --line: #1d3a2c; }
+/* calm background: one soft light at the top, no moving shine, no floating dots */
+body, body[data-place] { background: radial-gradient(700px 420px at 50% -8%, color-mix(in srgb, var(--purple) 20%, transparent), transparent 70%), var(--bg) !important; background-attachment: fixed !important; }
+body::after, .particle { display: none !important; }
+.bg-grid { opacity: .16 !important; }
+/* solid surfaces */
+.card, .roomcode, .av-editor, .settings, .member, .gcard, .pcard, .stage-card, .hero-net, .choice.join { backdrop-filter: none !important; background: var(--glass); border: 1.5px solid var(--line); }
+.hero-net { background: var(--glass) !important; }
+.gcard::after { display: none; }
+.gcard { box-shadow: 0 3px 0 var(--press); }
+.gcard:not(:disabled):active { transform: translateY(2px); box-shadow: 0 1px 0 var(--press); }
+.gcard:not(:disabled) .g-ic { animation: none; }
+.gcard.social .g-ic { box-shadow: none; }
+/* chunky pressable buttons: hard shadow instead of glow */
+.btn { box-shadow: 0 3px 0 var(--press); border-width: 1.5px; }
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--press); }
+.btn.ghost { box-shadow: none; }
+.btn.hot, .choice.host { background: var(--hot-grad); text-shadow: none; box-shadow: 0 4px 0 color-mix(in srgb, var(--purple) 45%, #000); }
+.btn.hot:active { box-shadow: 0 1px 0 color-mix(in srgb, var(--purple) 45%, #000); }
+.choice.host { box-shadow: 0 6px 0 color-mix(in srgb, var(--purple) 45%, #000); }
+.choice:active { transform: translateY(3px); }
+.choice.join { box-shadow: 0 6px 0 var(--press); border-color: color-mix(in srgb, var(--cyan) 45%, transparent); }
+.edit-av { box-shadow: 0 3px 0 var(--press); }
+/* numbers: crisp, no neon */
+.hn-pct, .stage-card b, .stage-card.vote b, .roomcode b span { text-shadow: none !important; }
+.hero-net .hn-pct { animation: none; }
+.roomcode b span { border-width: 1.5px; box-shadow: 0 3px 0 var(--press); }
+.tab .badge { box-shadow: none; }
+.member.in { box-shadow: none; border-color: var(--green); }
+.pcard.sel { box-shadow: none; }
+.pcard.has-voted { box-shadow: none !important; }
+.card.key { box-shadow: none; border-color: color-mix(in srgb, var(--yellow) 55%, transparent); }
+.toast { box-shadow: 0 4px 0 var(--press); border-width: 1.5px; }
+.feed li { background: var(--glass); }
+.feed-img { box-shadow: 0 3px 0 var(--press); }
+.inp { border-width: 1.5px; }
+.inp:focus { box-shadow: none; border-color: var(--cyan); }
+/* ================= easter eggs ================= */
+.crash { width: 100%; max-width: 340px; background: #f0f0f0; color: #111; border: 1px solid #888; font: 14px 'Segoe UI', system-ui, sans-serif; box-shadow: 0 6px 0 rgba(0,0,0,.5); animation: popin .2s; }
+.crash-bar { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 6px 10px; font-size: 12px; border-bottom: 1px solid #ccc; }
+.crash-bar b { color: #666; font-weight: 400; }
+.crash-body { display: flex; gap: 12px; padding: 16px 14px 8px; }
+.crash-body p { margin: 0 0 8px; } .crash-body .hint { color: #555; font-size: 13px; }
+.crash-x { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; background: #e81123; color: #fff; display: grid; place-items: center; font-weight: 700; }
+.crash-btns { display: flex; justify-content: flex-end; gap: 8px; padding: 8px 14px 14px; }
+.crash-btns .btn { margin: 0; background: #e1e1e1; color: #111; border: 1px solid #adadad; border-radius: 2px; font: 13px 'Segoe UI', system-ui, sans-serif; box-shadow: none; }
+body.bsod #app { animation: bsod .9s steps(1); }
+@keyframes bsod { 0% { filter: none; } 10% { filter: invert(1) hue-rotate(180deg); } 30% { filter: brightness(0); } 60% { filter: none; } }
+.home-av.dizzy { animation: dizzy 1s ease-in-out; }
+@keyframes dizzy { 0% { transform: rotate(0); } 25% { transform: rotate(-25deg) translateX(-8px); } 50% { transform: rotate(20deg) translateX(8px); } 75% { transform: rotate(-12deg); } 100% { transform: rotate(0); } }
+.home-av.sixseven { animation: sixseven .9s ease-in-out; }
+@keyframes sixseven { 0%, 100% { transform: none; } 20% { transform: translateY(-10px) rotate(-6deg); } 40% { transform: translateY(6px) rotate(6deg); } 60% { transform: translateY(-10px) rotate(-6deg); } 80% { transform: translateY(6px) rotate(6deg); } }

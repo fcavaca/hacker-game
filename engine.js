@@ -7,8 +7,8 @@
 // shields and Healer revives all work by scanning badges.
 
 import { SOLO_IDS, SENSOR_IDS, SOCIAL_IDS, EMERGENCY_IDS, DUEL_IDS, DUEL_BETTER, DEFAULT_SETTINGS, ZONES, SPOT_TWISTS, DARES,
-  GAMER_ROLES, HACKER_ROLES, NPC_ROLES, MODIFIERS, ROLE_INFO } from './config.js?v=13';
-import { cleanAvatar, COLOR_NAMES, HAIR_COLOR_NAMES, partName } from './avatar.js?v=13';
+  GAMER_ROLES, HACKER_ROLES, NPC_ROLES, MODIFIERS, ROLE_INFO } from './config.js?v=15';
+import { cleanAvatar, COLOR_NAMES, HAIR_COLOR_NAMES, partName } from './avatar.js?v=15';
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -613,7 +613,9 @@ export function createEngine(code, hostId, publish, saved) {
       const r = set().reveal;
       const teamTxt = k.team === 'hacker' ? 'a HACKER 💀' : k.team === 'npc' ? 'an NPC 🤖' : 'a Gamer 🎮';
       const what = r === 'role' ? ` They were: ${ROLE_NAME(k)}.` : r === 'team' ? (k.team === 'hacker' ? ' They were a HACKER 💀' : ` They were ${teamTxt}… not a Hacker.`) : '';
-      L.outcome = { kicked: k.id, text: `${broke ? 'It was a TIE… but someone\'s vote weighs more. 👀 ' : ''}${k.name} got Vote Kicked!${what}`, team: r === 'none' ? null : k.team, ...board };
+      // 🥚 everybody voted for the same person
+      const unanimous = !broke && !skip && ranked.length === 1 && top[1] >= 3 ? ' UNANIMOUS. Not even their mom would vote for them. 💀' : '';
+      L.outcome = { kicked: k.id, text: `${broke ? 'It was a TIE… but someone\'s vote weighs more. 👀 ' : ''}${k.name} got Vote Kicked!${unanimous}${what}`, team: r === 'none' ? null : k.team, ...board };
       log(`🥾 ${k.name} (${ROLE_INFO[k.role]?.name || k.role}) was Vote Kicked with ${top[1]} votes`);
       if (k.role === 'troll') npcWin(k, 'They actually kicked you. Masterful trolling.');
       else note(k.id, 'The group voted you out. Follow the rest from the sidelines — and no talking!', 'lose', 'KICKED', { scene: k.id, delay: Math.round((3 + (Object.keys(counts).length + 1) * 0.9) * 1000 + 400) }); // shown after the vote reveal

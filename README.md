@@ -1,5 +1,10 @@
 # HACKER — the party game · prototype v0.6 (18 Nov 2026)
 
+**New in v1.0 — TrustIssues.exe**
+- **New name:** TrustIssues.exe. The loading screen shows "TrustIssues", then ".exe" slams down and cracks the ground. New app icon: a suspicious gamer face with a headset and an error badge.
+- **Look:** same colours, but cleaner — one gradient only on the main buttons, solid cards instead of frosted glass, chunky buttons with a hard shadow, no glow or floating dots on normal screens.
+- **Easter eggs** (secret, not shown in How to play): tap the logo 7 times; hold your character; nicknames "67", "tung tung", "skibidi", "admin", "mom"; join codes HACK, NOOB, OHIO, SIGM; open the game between 2 and 5 AM; a unanimous Vote Kick.
+
 **New in v0.9**
 - **Removed:** Bug Squash, Terminal, File Sort, Captcha, Spam Filter, Password Picker, Hack the Mainframe, Firewall Defender.
 - **Odd One Out** is now emoji-based and funnier (near-twin emojis, then flipped/turned ones, with a silly hint each round).

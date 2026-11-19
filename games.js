@@ -4,7 +4,7 @@
 // Duel game: run(root, rand, done) -> cleanup. rand() is shared so both players get the SAME challenge.
 //            Call done(score).
 
-import { avatarSVG, randomAvatar } from './avatar.js?v=13';
+import { avatarSVG, randomAvatar } from './avatar.js?v=15';
 
 export function seeded(seed) {
   let a = seed >>> 0;

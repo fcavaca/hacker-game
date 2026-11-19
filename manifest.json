@@ -1,6 +1,6 @@
 {
-  "name": "Hacker Party Game",
-  "short_name": "Hacker",
+  "name": "TrustIssues.exe",
+  "short_name": "TrustIssues",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#06070d",

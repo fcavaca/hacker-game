@@ -7,27 +7,27 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Hacker">
+  <meta name="apple-mobile-web-app-title" content="TrustIssues">
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-180.png">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-  <title>HACKER — the party game</title>
+  <title>TrustIssues.exe — the party game</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=13">
+  <link rel="stylesheet" href="style.css?v=15">
 </head>
 <body>
   <!-- Loading screen: shows instantly while fonts, code and the network load -->
   <div id="boot">
-    <div class="boot-logo"><span class="glitch" data-t="HACKER">HACKER</span><small>THE PARTY GAME</small></div>
+    <!-- "TrustIssues" appears, then ".exe" slams down and cracks the ground -->
+    <div class="ti-logo boot-logo"><span class="ti-name">TrustIssues</span><span class="ti-exe">.exe<svg class="ti-cracks" viewBox="-150 -60 300 120" aria-hidden="true"><path d="M0 0L-28 7L-52 3L-88 17L-145 12"/><path d="M0 0L24 9L58 5L96 21L148 16"/><path d="M0 0L-11 24L-29 39L-36 60"/><path d="M0 0L13 21L9 39L27 58"/><path d="M0 0L-44 -7L-82 -3"/><path d="M0 0L41 -9L72 -5"/><path d="M-52 3L-60 27"/><path d="M58 5L69 31"/></svg><i class="ti-flash"></i><b class="ti-rock" style="--x:-90px;--y:-70px;--r:200deg"></b><b class="ti-rock" style="--x:85px;--y:-80px;--r:-160deg"></b><b class="ti-rock" style="--x:-130px;--y:-20px;--r:90deg"></b><b class="ti-rock" style="--x:125px;--y:-30px;--r:-240deg"></b><b class="ti-rock" style="--x:-50px;--y:-110px;--r:300deg"></b><b class="ti-rock" style="--x:40px;--y:-120px;--r:-120deg"></b><b class="ti-rock" style="--x:-160px;--y:10px;--r:60deg"></b><b class="ti-rock" style="--x:160px;--y:5px;--r:-90deg"></b></span><div class="ti-ground"></div><small class="ti-tag">has stopped working.</small></div>
     <div class="boot-term">
-      <p style="--d:.1s">&gt; booting hacker_os v0.9…</p>
-      <p style="--d:.5s">&gt; loading firewalls…… <b>OK</b></p>
-      <p style="--d:.9s">&gt; injecting chaos into network… <b>OK</b></p>
-      <p style="--d:1.3s">&gt; hiding the hackers among you… <b>OK</b></p>
-      <p style="--d:1.7s">&gt; trust nobody. <span class="caret">█</span></p>
+      <p style="--d:1.15s">&gt; launching TrustIssues.exe…</p>
+      <p style="--d:1.4s">&gt; scanning friends for lies… <b>FOUND 3</b></p>
+      <p style="--d:1.65s">&gt; hiding the hackers among you… <b>OK</b></p>
+      <p style="--d:1.9s">&gt; trust nobody. <span class="caret">█</span></p>
     </div>
     <div class="boot-bar"><div></div></div>
   </div>
@@ -40,9 +40,9 @@
   <!-- QR code maker (the QR reader loads only when someone first scans) -->
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <!-- download every code file at the same time instead of one after another -->
-  <link rel="modulepreload" href="net.js?v=13"><link rel="modulepreload" href="engine.js?v=13"><link rel="modulepreload" href="games.js?v=13">
-  <link rel="modulepreload" href="config.js?v=13"><link rel="modulepreload" href="icons.js?v=13"><link rel="modulepreload" href="avatar.js?v=13">
-  <link rel="modulepreload" href="profile.js?v=13"><link rel="modulepreload" href="music.js?v=13"><link rel="modulepreload" href="firebase-config.js?v=13">
-  <script type="module" src="main.js?v=13"></script>
+  <link rel="modulepreload" href="net.js?v=15"><link rel="modulepreload" href="engine.js?v=15"><link rel="modulepreload" href="games.js?v=15">
+  <link rel="modulepreload" href="config.js?v=15"><link rel="modulepreload" href="icons.js?v=15"><link rel="modulepreload" href="avatar.js?v=15">
+  <link rel="modulepreload" href="profile.js?v=15"><link rel="modulepreload" href="music.js?v=15"><link rel="modulepreload" href="firebase-config.js?v=15">
+  <script type="module" src="main.js?v=15"></script>
 </body>
 </html>
