@@ -1,13 +1,13 @@
 // SCREENS — what each player sees. Every phone runs this file. The host's phone also runs the engine.
 
-import { connect, ONLINE } from './net.js?v=16';
-import { createEngine } from './engine.js?v=16';
-import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=16';
-import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=16';
-import { icon } from './icons.js?v=16';
-import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=16';
-import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=16';
-import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=16';
+import { connect, ONLINE } from './net.js?v=17';
+import { createEngine } from './engine.js?v=17';
+import { SOLO, DUEL, seeded, WIN_LINES, FAIL_LINES } from './games.js?v=17';
+import { ROLE_INFO, SETTINGS_UI, MODIFIERS, HOW, GAMER_ROLES, HACKER_ROLES, NPC_ROLES, PLACES } from './config.js?v=17';
+import { icon } from './icons.js?v=17';
+import { avatarSVG, randomAvatar, cleanAvatar, AV_PARTS, unlockLevel, lockedFix, randomUnlocked } from './avatar.js?v=17';
+import { loadProfile, createProfile, saveProfile, levelOf, levelProgress, recordGame, LEVELS } from './profile.js?v=17';
+import { unlockAudio, setTrack, sfx, prefs, savePrefs } from './music.js?v=17';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -1344,6 +1344,7 @@ function hideBoot() {
   const b = $('#boot');
   if (!b) return;
   sessionStorage.setItem('booted', '1');
+  window.__bootDone?.(); // everything loaded: fill the bar
   // 🥚 playing between 2 and 5 at night? the loading screen notices
   const hr = new Date().getHours();
   if (hr >= 2 && hr < 5) $('.boot-term', b)?.insertAdjacentHTML('beforeend', '<p style="--d:2.1s">&gt; why are you awake at 3 AM?… <b>SUS</b></p>');

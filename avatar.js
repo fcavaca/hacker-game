@@ -19,6 +19,7 @@ export const AV_PARTS = {
   c: { label: 'Colour', colors: AV_COLORS },
   k: { label: 'Headset', list: ['gaming', 'neon', 'cat ears', 'retro', 'pro RGB', 'wired earbuds', 'bunny ears', 'devil horns'] },
   a: { label: 'Extra', list: ['none', 'glasses', 'shades', 'monocle', 'cap', 'beanie', 'hacker mask', 'earring', 'party hat', 'clown nose', 'eye patch', 'sweatband', 'flower', 'propeller cap'] },
+  hd: { label: 'Hood', list: ['down', 'up', 'no hood'] }, // added last so old characters keep their look (hood down)
 };
 
 // Level needed to use an option: UNLOCK[part][optionIndex] = level. Everything else is free.
@@ -78,21 +79,26 @@ export function avatarSVG(raw, size = 48, extra = '') {
   const a = cleanAvatar(raw);
   const skin = SKINS[a.s], skinD = darken(skin, 0.8), hair = HAIR_COLORS[a.hc], hood = AV_COLORS[a.c], hoodD = darken(hood, 0.7);
   const P = (k) => AV_PARTS[k].list[a[k]];
-  const hairS = P('h'), eyes = P('e'), mouth = P('m'), face = P('f'), acc = P('a'), set = P('k');
+  const hairS = P('h'), eyes = P('e'), mouth = P('m'), face = P('f'), acc = P('a'), set = P('k'), hd = P('hd');
+  const up = hd === 'up';
   const kc = hood, kcD = darken(kc, 0.65); // headset = same colour as the hoodie
   let s = '';
-  // hair behind the head
-  if (hairS === 'long') s += `<path d="M25 44 Q22 80 30 88 L70 88 Q78 80 75 44 Z" fill="${hair}"/>`;
-  if (hairS === 'ponytail') s += `<ellipse cx="77" cy="50" rx="7" ry="15" fill="${hair}" transform="rotate(18 77 50)"/>`;
-  if (hairS === 'afro') s += `<circle cx="50" cy="38" r="33" fill="${hair}"/>`;
-  if (hairS === 'pigtails') s += `<circle cx="20" cy="44" r="9" fill="${hair}"/><circle cx="80" cy="44" r="9" fill="${hair}"/>`;
-  // the hood, lying down behind the neck (drawn first so the body and head sit on top of it)
-  s += `<path d="M21 88 Q16 57 50 54 Q84 57 79 88 Z" fill="${hood}"/><path d="M30 84 Q29 64 50 62 Q71 64 70 84 Z" fill="${hoodD}"/>`;
-  // body: hoodie
+  // hair behind the head (hidden inside the hood when it's up)
+  if (!up) {
+    if (hairS === 'long') s += `<path d="M25 44 Q22 80 30 88 L70 88 Q78 80 75 44 Z" fill="${hair}"/>`;
+    if (hairS === 'ponytail') s += `<ellipse cx="77" cy="50" rx="7" ry="15" fill="${hair}" transform="rotate(18 77 50)"/>`;
+    if (hairS === 'afro') s += `<circle cx="50" cy="38" r="33" fill="${hair}"/>`;
+    if (hairS === 'pigtails') s += `<circle cx="20" cy="44" r="9" fill="${hair}"/><circle cx="80" cy="44" r="9" fill="${hair}"/>`;
+  }
+  // hood DOWN: lying behind the neck · hood UP: the back of the hood behind the head
+  if (hd === 'down') s += `<path d="M21 88 Q16 57 50 54 Q84 57 79 88 Z" fill="${hood}"/><path d="M30 84 Q29 64 50 62 Q71 64 70 84 Z" fill="${hoodD}"/>`;
+  if (up) s += `<path d="M17 90 Q10 42 28 20 Q50 0 72 20 Q90 42 83 90 Z" fill="${hoodD}"/>`;
+  // body: hoodie (or a plain sweater without a hood)
   s += `<path d="M12 100 Q14 78 50 75 Q86 78 88 100 Z" fill="${hood}"/>`;
-  s += `<path d="M22 86 Q36 79 50 80 Q64 79 78 86" fill="none" stroke="${hoodD}" stroke-width="2.4" opacity=".7"/>`; // hood seam
+  if (hd === 'down') s += `<path d="M22 86 Q36 79 50 80 Q64 79 78 86" fill="none" stroke="${hoodD}" stroke-width="2.4" opacity=".7"/>`; // hood seam
   s += `<path d="M36 92 H64 V100 H36 Z" fill="${hoodD}" opacity=".45"/>`; // front pocket
-  s += `<path d="M33 77 Q50 94 67 77" fill="none" stroke="${hoodD}" stroke-width="3"/><path d="M44 84 V96 M56 84 V96" stroke="${hoodD}" stroke-width="2" stroke-linecap="round"/>`;
+  s += `<path d="M33 77 Q50 94 67 77" fill="none" stroke="${hoodD}" stroke-width="3"/>`;
+  if (hd !== 'no hood') s += `<path d="M44 84 V96 M56 84 V96" stroke="${hoodD}" stroke-width="2" stroke-linecap="round"/>`; // drawstrings
   // neck + ears + head (slightly bigger head = funnier)
   s += `<rect x="43" y="62" width="14" height="16" rx="5" fill="${skinD}"/>`;
   s += `<circle cx="26" cy="49" r="6" fill="${skin}"/><circle cx="74" cy="49" r="6" fill="${skin}"/>`;
@@ -176,8 +182,10 @@ export function avatarSVG(raw, size = 48, extra = '') {
     flower: '<g transform="translate(70 26)"><circle r="4" cx="0" cy="-5" fill="#ff6bd6"/><circle r="4" cx="5" cy="0" fill="#ff6bd6"/><circle r="4" cx="0" cy="5" fill="#ff6bd6"/><circle r="4" cx="-5" cy="0" fill="#ff6bd6"/><circle r="3" fill="#ffd23f"/></g>',
     'propeller cap': `<path d="M27 34 Q27 14 50 14 Q73 14 73 34 Z" fill="${hood}"/><path d="M27 30 Q50 25 73 30" stroke="#ffd23f" stroke-width="2" fill="none"/><path d="M50 14 V6" stroke="${INK}" stroke-width="2"/><g class="prop"><ellipse cx="42" cy="5" rx="8" ry="2.5" fill="#ff2d55"/><ellipse cx="58" cy="5" rx="8" ry="2.5" fill="#00d2ff"/></g>`,
   }[acc];
-  // the GAMER HEADSET — every character wears one
-  const band = (w = 5, col = INK) => `<path d="M22 50 Q21 10 50 10 Q79 10 78 50" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;
+  // the GAMER HEADSET — every character wears one. The band sits ON the head/hair (it used to float above it).
+  const hatTop = { cap: 13, beanie: 11, 'propeller cap': 14 }[acc];
+  const T = up ? 13 : Math.min(hatTop ?? 99, { bald: 19, buzz: 18, afro: 7, curly: 11, spiky: 17, mohawk: 18 }[hairS] ?? 15);
+  const band = (w = 5, col = INK) => `<path d="M22 50 Q21 ${T} 50 ${T} Q79 ${T} 78 50" fill="none" stroke="${col}" stroke-width="${w}" stroke-linecap="round"/>`;
   const cups = (rx = 6.5, ry = 10, fill = kc, stroke = INK) => `<ellipse cx="21" cy="50" rx="${rx}" ry="${ry}" fill="${fill}" stroke="${stroke}" stroke-width="2"/><ellipse cx="79" cy="50" rx="${rx}" ry="${ry}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
   const mic = `<path d="M19 58 Q22 70 38 67" stroke="${INK}" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="39.5" cy="66.5" r="3" fill="${kc}" stroke="${INK}" stroke-width="1.4"/>`;
   const headset = {
@@ -185,7 +193,7 @@ export function avatarSVG(raw, size = 48, extra = '') {
     neon: band(3.2, kc) + cups(7.5, 9, '#101018', kc) + `<circle cx="21" cy="50" r="3" fill="${kc}"/><circle cx="79" cy="50" r="3" fill="${kc}"/>`,
     'cat ears': band() + `<path d="M28 21 L30 6 L40 15 Z M72 21 L70 6 L60 15 Z" fill="${kc}" stroke="${INK}" stroke-width="1.8" stroke-linejoin="round"/><path d="M31 15 L32 10 L36 14 M69 15 L68 10 L64 14" fill="#ffb3d9"/>` + cups(6.5, 9.5) + mic,
     retro: band(2.6, '#777') + `<circle cx="21" cy="50" r="8.5" fill="#ff7a1a" stroke="${INK}" stroke-width="1.6"/><circle cx="79" cy="50" r="8.5" fill="#ff7a1a" stroke="${INK}" stroke-width="1.6"/>`,
-    'pro RGB': band(6.5) + `<path d="M24 36 Q26 13 50 13 Q74 13 76 36" fill="none" stroke="${kc}" stroke-width="2" class="rgb"/>` + cups(8, 12, '#16131c') + `<ellipse cx="21" cy="50" rx="4" ry="7" fill="none" stroke="${kc}" stroke-width="2" class="rgb"/><ellipse cx="79" cy="50" rx="4" ry="7" fill="none" stroke="${kc}" stroke-width="2" class="rgb"/>` + mic,
+    'pro RGB': band(6.5) + `<path d="M24 36 Q26 ${T + 3} 50 ${T + 3} Q74 ${T + 3} 76 36" fill="none" stroke="${kc}" stroke-width="2" class="rgb"/>` + cups(8, 12, '#16131c') + `<ellipse cx="21" cy="50" rx="4" ry="7" fill="none" stroke="${kc}" stroke-width="2" class="rgb"/><ellipse cx="79" cy="50" rx="4" ry="7" fill="none" stroke="${kc}" stroke-width="2" class="rgb"/>` + mic,
     'wired earbuds': `<path d="M24 53 Q22 68 34 76 Q42 82 50 86 M76 53 Q78 68 66 76 Q58 82 50 86 L50 98" fill="none" stroke="#f4f4f4" stroke-width="1.8" stroke-linecap="round"/><rect x="47.5" y="84" width="5" height="7" rx="1.5" fill="${kc}" stroke="${INK}" stroke-width="1"/>
       <ellipse cx="24.5" cy="50" rx="4.2" ry="5" fill="#f4f4f4" stroke="${INK}" stroke-width="1.4"/><ellipse cx="75.5" cy="50" rx="4.2" ry="5" fill="#f4f4f4" stroke="${INK}" stroke-width="1.4"/><circle cx="24.5" cy="50" r="1.6" fill="${kc}"/><circle cx="75.5" cy="50" r="1.6" fill="${kc}"/>`,
     'bunny ears': band() + `<ellipse cx="36" cy="-2" rx="5.5" ry="15" fill="${kc}" stroke="${INK}" stroke-width="1.8" transform="rotate(-12 36 10)"/><ellipse cx="64" cy="-2" rx="5.5" ry="15" fill="${kc}" stroke="${INK}" stroke-width="1.8" transform="rotate(12 64 10)"/>` + cups(6.5, 9.5) + mic,
@@ -193,6 +201,9 @@ export function avatarSVG(raw, size = 48, extra = '') {
   }[set];
   const hideHair = ['cap', 'beanie', 'propeller cap'].includes(acc) && !['long', 'afro', 'pigtails'].includes(hairS);
   const mouthPart = acc === 'hacker mask' ? '' : mouthSvg;
-  s += (hideHair ? '' : top) + faceSvg + fh + brow + eyeSvg + mouthPart + accSvg + headset;
+  // hood UP: the hood frames the face and covers the hair (only a fringe peeks out)
+  const hoodFront = up ? `<path fill-rule="evenodd" d="M17 90 Q10 42 28 20 Q50 0 72 20 Q90 42 83 90 L73 90 Q77 66 75 46 Q73 24 50 23 Q27 24 25 46 Q23 66 27 90 Z" fill="${hood}"/><path d="M27 90 Q23 66 25 46 Q27 24 50 23 Q73 24 75 46 Q77 66 73 90" fill="none" stroke="${hoodD}" stroke-width="2.6"/>` : '';
+  const hairTop = hideHair ? '' : up ? `<defs><clipPath id="av-hood-clip"><path d="M25 46 Q27 24 50 23 Q73 24 75 46 Q77 66 73 90 L27 90 Q23 66 25 46 Z"/></clipPath></defs><g clip-path="url(#av-hood-clip)">${top}</g>` : top;
+  s += hairTop + hoodFront + faceSvg + fh + brow + eyeSvg + mouthPart + accSvg + headset;
   return `<svg class="av ${extra}" style="--av:${kc}" width="${size}" height="${size}" viewBox="0 -8 100 108" aria-hidden="true">${s}</svg>`;
 }

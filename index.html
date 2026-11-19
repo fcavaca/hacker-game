@@ -16,7 +16,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=16">
+  <link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
   <!-- Loading screen: shows instantly while fonts, code and the network load -->
@@ -32,7 +32,21 @@
     <div class="boot-bar"><div></div></div>
   </div>
   <!-- the intro plays only the first time the game opens (not when you go back to the menu) -->
-  <script>try { if (sessionStorage.getItem('booted')) document.getElementById('boot').remove(); } catch (e) {}</script>
+  <script>
+    try { if (sessionStorage.getItem('booted')) document.getElementById('boot').remove(); } catch (e) {}
+    // the loading bar follows the real download: each game file that arrives moves it forward
+    (function () {
+      var bar = document.querySelector('.boot-bar div'); if (!bar) return;
+      var want = ['style.css', 'main.js', 'net.js', 'engine.js', 'games.js', 'config.js', 'icons.js', 'avatar.js', 'profile.js', 'music.js', 'firebase-config.js', 'qrcode', 'fonts.g'];
+      var got = {}, n = 0;
+      function seen(name) { for (var i = 0; i < want.length; i++) if (name.indexOf(want[i]) >= 0 && !got[want[i]]) { got[want[i]] = 1; n++; bar.style.width = Math.min(92, 6 + n / want.length * 86) + '%'; } }
+      try {
+        performance.getEntriesByType('resource').forEach(function (e) { seen(e.name); });
+        new PerformanceObserver(function (l) { l.getEntries().forEach(function (e) { seen(e.name); }); }).observe({ type: 'resource', buffered: true });
+      } catch (e) { bar.style.width = '60%'; }
+      window.__bootDone = function () { bar.style.width = '100%'; }; // called when the game is ready
+    })();
+  </script>
   <div class="bg-grid"></div>
   <div id="app"></div>
   <div id="overlay"></div>
@@ -42,9 +56,9 @@
   <!-- QR code maker (the QR reader loads only when someone first scans) -->
   <script defer src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
   <!-- download every code file at the same time instead of one after another -->
-  <link rel="modulepreload" href="net.js?v=16"><link rel="modulepreload" href="engine.js?v=16"><link rel="modulepreload" href="games.js?v=16">
-  <link rel="modulepreload" href="config.js?v=16"><link rel="modulepreload" href="icons.js?v=16"><link rel="modulepreload" href="avatar.js?v=16">
-  <link rel="modulepreload" href="profile.js?v=16"><link rel="modulepreload" href="music.js?v=16"><link rel="modulepreload" href="firebase-config.js?v=16">
-  <script type="module" src="main.js?v=16"></script>
+  <link rel="modulepreload" href="net.js?v=17"><link rel="modulepreload" href="engine.js?v=17"><link rel="modulepreload" href="games.js?v=17">
+  <link rel="modulepreload" href="config.js?v=17"><link rel="modulepreload" href="icons.js?v=17"><link rel="modulepreload" href="avatar.js?v=17">
+  <link rel="modulepreload" href="profile.js?v=17"><link rel="modulepreload" href="music.js?v=17"><link rel="modulepreload" href="firebase-config.js?v=17">
+  <script type="module" src="main.js?v=17"></script>
 </body>
 </html>

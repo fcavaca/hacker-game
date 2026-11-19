@@ -1185,3 +1185,6 @@ body.bsod #app { animation: bsod .9s steps(1); }
 @keyframes sixseven { 0%, 100% { transform: none; } 20% { transform: translateY(-10px) rotate(-6deg); } 40% { transform: translateY(6px) rotate(6deg); } 60% { transform: translateY(-10px) rotate(-6deg); } 80% { transform: translateY(6px) rotate(6deg); } }
 .choice.host small { color: var(--on-hot); opacity: .75; }
 .choice.host .ic { color: var(--on-hot); }
+
+/* the loading bar follows real loading (index.html sets the width) */
+.boot-bar div { animation: none !important; width: 4%; transition: width .35s ease-out; }
