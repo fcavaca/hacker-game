@@ -84,9 +84,10 @@ export function avatarSVG(raw, size = 48, extra = '') {
   const up = hd === 'up';
   const kc = hood, kcD = darken(kc, 0.65); // headset = same colour as the hoodie
   let s = '';
-  // hood UP shapes: the outer hood (sits a bit loose, falls onto the shoulders) and the face opening
-  const HOOD_OUT = 'M15 84 Q13 52 21 31 Q31 10 50 10 Q69 10 79 31 Q87 52 85 84 Z';
-  const HOOD_OPEN = 'M29 80 Q25 62 26.5 46 Q28 21 50 21 Q72 21 73.5 46 Q75 62 71 80 Z';
+  // hood UP shapes: a round hood that hugs the head and tucks in at the neck (the shoulders show wider below),
+  // and an oval face opening that closes under the chin
+  const HOOD_OUT = 'M27 79 Q17 71 16.5 48 Q17 10.5 50 10.5 Q83 10.5 83.5 48 Q83 71 73 79 Q50 87 27 79 Z';
+  const HOOD_OPEN = 'M24.5 47.5 A25.5 28.5 0 1 1 75.5 47.5 A25.5 28.5 0 1 1 24.5 47.5 Z';
   // hood up: the dark inside of the hood, then the hair behind the head shows inside the opening only
   if (up) {
     s += `<defs><clipPath id="av-hood-clip"><path d="${HOOD_OPEN}"/></clipPath></defs><path d="${HOOD_OPEN}" fill="${hoodD}"/>`;
@@ -119,7 +120,7 @@ export function avatarSVG(raw, size = 48, extra = '') {
   s += overBody;
   // neck + ears + head (slightly bigger head = funnier)
   s += `<rect x="43" y="62" width="14" height="16" rx="5" fill="${skinD}"/>`;
-  s += `<circle cx="26" cy="49" r="6" fill="${skin}"/><circle cx="74" cy="49" r="6" fill="${skin}"/>`;
+  if (!up) s += `<circle cx="26" cy="49" r="6" fill="${skin}"/><circle cx="74" cy="49" r="6" fill="${skin}"/>`; // ears (inside the hood when it's up)
   s += `<ellipse cx="50" cy="46" rx="24" ry="27" fill="${skin}"/>`;
   // hair on top
   const top = {
@@ -231,10 +232,9 @@ export function avatarSVG(raw, size = 48, extra = '') {
   // hood UP: the hood frames the face and covers the hair (only a fringe peeks out)
   // the rim is a ring around the face: hugs the head like a real hoodie, with a seam on top and a soft shadow inside
   const hoodFront = up ? `<path fill-rule="evenodd" d="${HOOD_OUT} ${HOOD_OPEN}" fill="${hood}"/>`
-    + `<path d="M29 80 Q25 62 26.5 46 Q28 21 50 21 Q72 21 73.5 46 Q75 62 71 80" fill="none" stroke="${hoodD}" stroke-width="2.4" stroke-linecap="round"/>`
-    + `<path d="M50 10.5 V20" stroke="${hoodD}" stroke-width="1.8" stroke-linecap="round" opacity=".8"/>`
-    + `<path d="M19 60 Q18 72 20 82 M81 60 Q82 72 80 82" fill="none" stroke="${hoodD}" stroke-width="1.6" stroke-linecap="round" opacity=".55"/>`
-    + `<path d="M22 32 Q29 17 42 13.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".18"/>` : '';
+    + `<path d="${HOOD_OPEN}" fill="none" stroke="${hoodD}" stroke-width="2.6"/>`
+    + `<path d="M50 11 V19" stroke="${hoodD}" stroke-width="1.8" stroke-linecap="round" opacity=".7"/>`
+    + `<path d="M22 31 Q28 17 41 13.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".18"/>` : '';
   // hood UP: long hair falls OUT of the hood, over the hoodie
   const fall = !up ? '' : {
     long: [1, -1].map((d) => { const x = (v) => 50 - d * (50 - v); return `<path d="M${x(27)} 48 Q${x(23)} 70 ${x(26)} 93 L${x(31)} 89 L${x(34)} 93 Q${x(32)} 72 ${x(33.5)} 58 Z" fill="${hair}"/>`; }).join(''),
